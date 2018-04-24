@@ -61,6 +61,9 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
 	
 	BLOCKS_ROWS EQU 5
 
+;	Initial position of bar
+	INITIAL_POS_ROW_PJ EQU SCREEN_MAX_ROWS-4    
+    INITIAL_POS_COL_PJ EQU SCREEN_MAX_COLS/2
 ; *************************************************************************
 ; Our executable assembly code starts here in the .code section
 ; *************************************************************************
@@ -79,8 +82,8 @@ MAIN 	PROC 	NEAR
       CALL DRAW_FIELD
 	  CALL DRAW_BLOCKS
 
-      MOV DH, [POS_ROW_PJ]
-      MOV DL, [POS_COL_PJ]
+      MOV DH, INITIAL_POS_ROW_PJ
+      MOV DL, INITIAL_POS_COL_PJ
       
       CALL MOVE_CURSOR
       
@@ -965,7 +968,8 @@ NEW_TIMER_INTERRUPT PROC NEAR
       
 END_SNAKES:
       MOV [END_GAME], TRUE
-      
+      MOV [POS_COL_PJ],INITIAL_POS_COL_PJ
+	  MOV [POS_ROW_PJ],INITIAL_POS_ROW_PJ
 END_ISR:
 
       POP AX
@@ -1062,8 +1066,8 @@ DATA_SEG	SEGMENT	PUBLIC
     OLD_INTERRUPT_BASE    DW  0, 0  ; Stores the current (system) timer ISR address
 	
 	; Position of the PJ
-    POS_ROW_PJ DB SCREEN_MAX_ROWS-4    
-    POS_COL_PJ DB SCREEN_MAX_COLS/2
+    POS_ROW_PJ DB INITIAL_POS_ROW_PJ    
+    POS_COL_PJ DB INITIAL_POS_COL_PJ
 	
 	; Position of the ball
     POS_ROW_BALL DB SCREEN_MAX_ROWS-5    

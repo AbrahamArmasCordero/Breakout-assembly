@@ -1,6 +1,6 @@
 
  Start  Stop   Length Name                   Class
- 00000H 003E5H 003E6H CODE_SEG               
+ 00000H 003EBH 003ECH CODE_SEG               
  003F0H 00434H 00045H DATA_SEG               
 
  Origin   Group
