@@ -27,11 +27,11 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
     ATTR_BALL      EQU 001h
 
 ; ASCII / ATTR CODES TO DRAW THE FIELD
-    ASCII_FIELD		EQU 020h
-    ATTR_FIELD_WALLS	EQU 020h
-	ATTR_FIELD_TOP		EQU 070h
-	ATTR_FIELD_DOWN		EQU	0E0h
-	ATTR_FIELD_INSIDE  EQU 000h
+    ASCII_FIELD		EQU 020h ;espacio
+    ATTR_FIELD_WALLS	EQU 060h ;naranja
+	ATTR_FIELD_TOP		EQU 070h ;blanco
+	ATTR_FIELD_DOWN	EQU	020h ;Verde
+	ATTR_FIELD_INSIDE  EQU 000h ;negro
 	
 ; ASCII / ATTR CODES TO DRAW THE BLOCKS
     ASCII_BLOCKS    EQU 023h
@@ -64,6 +64,9 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
 	
 	BLOCKS_ROWS EQU 5
 
+;	Initial position of bar
+	INITIAL_POS_ROW_PJ EQU SCREEN_MAX_ROWS-4    
+    INITIAL_POS_COL_PJ EQU SCREEN_MAX_COLS/2
 ; *************************************************************************
 ; Our executable assembly code starts here in the .code section
 ; *************************************************************************
@@ -82,8 +85,8 @@ MAIN 	PROC 	NEAR
       CALL DRAW_FIELD
 	  CALL DRAW_BLOCKS
 
-      MOV DH, SCREEN_MAX_ROWS-4
-      MOV DL, SCREEN_MAX_COLS/2
+      MOV DH, INITIAL_POS_ROW_PJ
+      MOV DL, INITIAL_POS_COL_PJ
       
       CALL MOVE_CURSOR
       
@@ -174,8 +177,8 @@ MAIN	ENDP
 ; Modifies:
 ;   -
 ; Uses: 
-;   INC_ROW_PJ memory variable
 ;   INC_COL_PJ memory variable
+;   INC_ROW_PJ memory variable
 ;   DIV_SPEED memory variable
 ;   NUM_TILES memory variable
 ;   START_GAME memory variable
@@ -950,7 +953,7 @@ PRINT_SCORE        ENDP
 ; ****************************************
 PUBLIC NEW_TIMER_INTERRUPT
 NEW_TIMER_INTERRUPT PROC NEAR
-
+;
     ; Call previous interrupt
     PUSHF
     CALL DWORD PTR [OLD_INTERRUPT_BASE]
@@ -968,10 +971,15 @@ NEW_TIMER_INTERRUPT PROC NEAR
     JNZ END_ISR
     MOV [INT_COUNT], 0
 
+	MOV DL, [POS_COL_PJ]
+	MOV DH, [POS_ROW_PJ]
     ; Load worm coordinates
     ADD DL, [INC_COL_PJ]
     ADD DH, [INC_ROW_PJ]
-
+	
+	MOV [POS_COL_PJ], DL
+	MOV [POS_ROW_PJ], DH
+	
     ; Move snake on the screen
     CALL MOVE_CURSOR
 	
@@ -985,6 +993,15 @@ NEW_TIMER_INTERRUPT PROC NEAR
     INC [NUM_TILES]
     CALL PRINT_PJ
 
+	;Load BALL coordinates
+	MOV DL, [POS_COL_BALL]
+    MOV DH, [POS_ROW_BALL]
+	
+	; Move BALL on the screen
+    CALL MOVE_CURSOR
+	; Dibujamos la pelota
+	CALL PRINT_BALL
+	
     ; Check if it is time to increase the speed of the snake
     CMP [DIV_SPEED], 1
     JZ END_ISR
@@ -993,13 +1010,13 @@ NEW_TIMER_INTERRUPT PROC NEAR
     CMP AH, 0                 ; REMAINDER
     JNZ END_ISR
     DEC [DIV_SPEED]
-
 	
     JMP END_ISR
       
 END_SNAKES:
       MOV [END_GAME], TRUE
-      
+      MOV [POS_COL_PJ],INITIAL_POS_COL_PJ
+	  MOV [POS_ROW_PJ],INITIAL_POS_ROW_PJ
 END_ISR:
 
       POP AX
@@ -1094,14 +1111,22 @@ CODE_SEG 	ENDS
 DATA_SEG	SEGMENT	PUBLIC
 			
     OLD_INTERRUPT_BASE    DW  0, 0  ; Stores the current (system) timer ISR address
-
-    ; (INC_ROW_PJ. INC_COL_PJ) may be (-1, 0, 1), and determine the direction of movement of the snake
+	
+	; Position of the PJ
+    POS_ROW_PJ DB INITIAL_POS_ROW_PJ    
+    POS_COL_PJ DB INITIAL_POS_COL_PJ
+	
+	; Position of the ball
+    POS_ROW_BALL DB SCREEN_MAX_ROWS-5    
+    POS_COL_BALL DB SCREEN_MAX_COLS/2
+	
+    ; (INC_COL_PJ. INC_COL_PJ) may be (-1, 0, 1), and determine the direction of movement of the snake
     INC_ROW_PJ DB 0    
     INC_COL_PJ DB 0
 
 	; (INC_ROW_BALL. INC_COL_BALL) may be (-1, 0, 1), and determine the direction of movement of the ball
-    INC_ROW_BALL DB SCREEN_MAX_ROWS - 5    
-    INC_COL_BALL DB SCREEN_MAX_COLS / 2
+    INC_ROW_BALL DB 0    
+    INC_COL_BALL DB 0
 	
     NUM_TILES DW 0              ; SNAKE LENGTH
     NUM_TILES_INC_SPEED DB 20   ; THE SPEED IS INCREASED EVERY 'NUM_TILES_INC_SPEED'
