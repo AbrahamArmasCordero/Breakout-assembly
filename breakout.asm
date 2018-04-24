@@ -23,8 +23,8 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
     ATTR_PJ      EQU 070h
 	
 ; ASCII / ATTR CODES TO DRAW THE SNAKE
-    ASCII_BALL     EQU 095h
-    ATTR_BALL      EQU 001h
+    ASCII_BALL     EQU 02Ah
+    ATTR_BALL      EQU 007h
 
 ; ASCII / ATTR CODES TO DRAW THE FIELD
     ASCII_FIELD		EQU 020h ;espacio
@@ -35,7 +35,7 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
 	
 ; ASCII / ATTR CODES TO DRAW THE BLOCKS
     ASCII_BLOCKS    EQU 023h
-    ATTR_BLOCKS     EQU 004h
+    ATTR_BLOCKS     EQU 024h
 	
     ASCII_NUMBER_ZERO EQU 030h
 
@@ -448,7 +448,7 @@ END_PRINT_PJ:
 PRINT_PJ        ENDP 
 
 ; ****************************************
-; Prints a new tile of the snake, at the current cursos position
+; Prints the ball, at the current cursos position
 ; Entry: 
 ; 
 ; Returns:
@@ -466,6 +466,7 @@ PRINT_BALL PROC NEAR
 
     PUSH AX
     PUSH BX
+	
     MOV AL, ASCII_BALL
     MOV BL, ATTR_BALL
     CALL PRINT_CHAR_ATTR
@@ -924,6 +925,60 @@ PRINT_SCORE PROC NEAR
 PRINT_SCORE        ENDP
 
 ; ****************************************
+; Move, print and clean the ball of the screen
+; Entry: 
+;   
+; Returns:
+;   -
+; Modifies:
+;   -
+; Uses: 
+;   POS_COL_BALL
+;	POS_ROW_BALL
+;	ASCII_FIELD
+;	ATTR_FIELD_INSIDE
+;	INC_COL_BALL
+;	INC_ROW_BALL
+;	POS_COL_BALL
+;	POS_ROW_BALL
+; Calls:
+;   MOVE_CURSOR
+;	PRINT_CHAR_ATTR
+;	PRINT_BALL
+; ****************************************
+PUBLIC MOVE_BALL
+MOVE_BALL PROC NEAR
+	PUSH DX
+	PUSH AX
+	PUSH BX
+	
+; Load BALL coordinates
+	MOV DL, [POS_COL_BALL]
+    MOV DH, [POS_ROW_BALL]
+	CALL MOVE_CURSOR
+	MOV AL, ASCII_FIELD
+    MOV BL, ATTR_FIELD_INSIDE
+	CALL PRINT_CHAR_ATTR
+; Añadimos el incremento de posicion
+	ADD DL,[INC_COL_BALL]
+	ADD DH,[INC_ROW_BALL]
+;Actualizamos las variables posición a la nueva
+	MOV POS_COL_BALL,DL
+	MOV POS_ROW_BALL,DH
+	
+; Move BALL on the screen
+    CALL MOVE_CURSOR
+; Dibujamos la pelota
+	CALL PRINT_BALL
+	
+	POP BX
+	POP AX
+	POP DX
+    RET
+
+MOVE_BALL       ENDP
+
+; ****************************************
 ; Game timer interrupt service routine
 ; Called 18.2 times per second by the operating system
 ; Calls previous ISR
@@ -951,6 +1006,7 @@ PRINT_SCORE        ENDP
 ;   READ_SCREEN_CHAR
 ;   PRINT_PJ
 ; ****************************************
+
 PUBLIC NEW_TIMER_INTERRUPT
 NEW_TIMER_INTERRUPT PROC NEAR
 ;
@@ -993,14 +1049,7 @@ NEW_TIMER_INTERRUPT PROC NEAR
     INC [NUM_TILES]
     CALL PRINT_PJ
 
-	;Load BALL coordinates
-	MOV DL, [POS_COL_BALL]
-    MOV DH, [POS_ROW_BALL]
-	
-	; Move BALL on the screen
-    CALL MOVE_CURSOR
-	; Dibujamos la pelota
-	CALL PRINT_BALL
+	CALL MOVE_BALL
 	
     ; Check if it is time to increase the speed of the snake
     CMP [DIV_SPEED], 1
@@ -1125,8 +1174,8 @@ DATA_SEG	SEGMENT	PUBLIC
     INC_COL_PJ DB 0
 
 	; (INC_ROW_BALL. INC_COL_BALL) may be (-1, 0, 1), and determine the direction of movement of the ball
-    INC_ROW_BALL DB 0    
-    INC_COL_BALL DB 0
+    INC_ROW_BALL DB -1    
+    INC_COL_BALL DB -1
 	
     NUM_TILES DW 0              ; SNAKE LENGTH
     NUM_TILES_INC_SPEED DB 20   ; THE SPEED IS INCREASED EVERY 'NUM_TILES_INC_SPEED'
