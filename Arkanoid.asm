@@ -19,12 +19,13 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
     ASCII_QUIT        EQU 071h ; 'q'
 
 ; ASCII / ATTR CODES TO DRAW THE SNAKE
-    ASCII_SNAKE     EQU 02Dh
-    ATTR_SNAKE      EQU 070h
+    ASCII_PJ     EQU 02Dh
+    ATTR_PJ      EQU 070h
 
 ; ASCII / ATTR CODES TO DRAW THE FIELD
     ASCII_FIELD    EQU 020h
-    ATTR_FIELD     EQU 060h
+    ATTR_FIELD_LIMITS     EQU 060h
+	ATTR_FIELD_INSIDE	  EQU 000h
 
     ASCII_NUMBER_ZERO EQU 030h
 
@@ -106,23 +107,23 @@ MAIN 	PROC 	NEAR
       JMP MAIN_LOOP
 
   RIGHT_KEY:
-      MOV [INC_COL], 1
-      MOV [INC_ROW], 0
+      MOV [INC_COL_PJ], 1
+      MOV [INC_ROW_PJ], 0
       JMP END_KEY
 
   LEFT_KEY:
-      MOV [INC_COL], -1
-      MOV [INC_ROW], 0
+      MOV [INC_COL_PJ], -1
+      MOV [INC_ROW_PJ], 0
       JMP END_KEY
 
   UP_KEY:
-      MOV [INC_COL], 0
-      MOV [INC_ROW], 0 ;-1
+      MOV [INC_COL_PJ], 0
+      MOV [INC_ROW_PJ], 0 ;-1
       JMP END_KEY
 
   DOWN_KEY:
-      MOV [INC_COL], 0
-      MOV [INC_ROW], 0 ;1
+      MOV [INC_COL_PJ], 0
+      MOV [INC_ROW_PJ], 0 ;1
       JMP END_KEY
       
   END_KEY:
@@ -155,8 +156,8 @@ MAIN	ENDP
 ; Modifies:
 ;   -
 ; Uses: 
-;   INC_ROW memory variable
-;   INC_COL memory variable
+;   INC_ROW_PJ memory variable
+;   INC_COL_PJ memory variable
 ;   DIV_SPEED memory variable
 ;   NUM_TILES memory variable
 ;   START_GAME memory variable
@@ -167,8 +168,8 @@ MAIN	ENDP
                   PUBLIC  INIT_GAME
 INIT_GAME         PROC    NEAR
 
-    MOV [INC_ROW], 0
-    MOV [INC_COL], 0
+    MOV [INC_ROW_PJ], 0
+    MOV [INC_COL_PJ], 0
 
     MOV [DIV_SPEED], 10
 
@@ -248,7 +249,7 @@ READ_SCREEN_CHAR  ENDP
 ;    left - top: (FIELD_R1, FIELD_C1) 
 ;    right - bottom: (FIELD_R2, FIELD_C2)
 ;   Character: ASCII_FIELD
-;   Attribute: ATTR_FIELD
+;   Attribute: ATTR_FIELD_LIMITS
 ; Calls:
 ;   PRINT_CHAR_ATTR
 ; ****************************************
@@ -260,7 +261,7 @@ DRAW_FIELD PROC NEAR
     PUSH DX
 
     MOV AL, ASCII_FIELD
-    MOV BL, ATTR_FIELD
+    MOV BL, ATTR_FIELD_LIMITS
 
     MOV DL, FIELD_C2
   UP_DOWN_SCREEN_LIMIT:
@@ -306,27 +307,68 @@ DRAW_FIELD       ENDP
 ; Modifies:
 ;   
 ; Uses: 
-;   character: ASCII_SNAKE
-;   attribute: ATTR_SNAKE
+;   character: ASCII_PJ
+;   attribute: ATTR_PJ
 ; Calls:
 ;   PRINT_CHAR_ATTR
 ; ****************************************
-PUBLIC PRINT_SNAKE
-PRINT_SNAKE PROC NEAR
+PUBLIC PRINT_PJ
+PRINT_PJ PROC NEAR
 
     PUSH AX
     PUSH BX
-    MOV AL, ASCII_SNAKE
-    MOV BL, ATTR_SNAKE
+    MOV AL, ASCII_PJ
+    MOV BL, ATTR_PJ
     CALL PRINT_CHAR_ATTR
 	
-      
+	PUSH DX ; PALA IZQUIERDA
+	ADD DL, -1
+	CALL MOVE_CURSOR
+	POP DX
+	CALL PRINT_CHAR_ATTR
+	
+	PUSH DX ;PALA DERECHA
+	ADD DL, 1
+	CALL MOVE_CURSOR
+	POP DX
+	CALL PRINT_CHAR_ATTR
+	;DEBUG
+	;JMP END_PRINT_PJ
+	;BORREMOS LA PALA 
+	CMP	INC_COL_PJ, 1 ; SI SE MUEVE HACIA LA DERECHA
+	JZ REMOVE_LEFT
+	CMP	INC_COL_PJ, -1 ; SI SE MUEVE HACIA LA DERECHA
+	JZ REMOVE_RIGHT
+	
+REMOVE_LEFT:
+	; muevo el cursor hacia la barra que quiero borrar
+	PUSH DX
+	ADD DL, -2
+	CALL MOVE_CURSOR
+	POP DX
+	;QUITO el char de barra y el fondo blanco
+	MOV AL, ASCII_FIELD
+    MOV BL, ATTR_FIELD_INSIDE
+    CALL PRINT_CHAR_ATTR
+	JMP END_PRINT_PJ
+REMOVE_RIGHT:
+	; muevo el cursor hacia la barra que quiero borrar
+	PUSH DX
+	ADD DL, 2
+	CALL MOVE_CURSOR
+	POP DX
+	;QUITO el char de barra y el fondo blanco
+	MOV AL, ASCII_FIELD
+    MOV BL, ATTR_FIELD_INSIDE
+    CALL PRINT_CHAR_ATTR
+	JMP END_PRINT_PJ
+
+END_PRINT_PJ:
     POP BX
     POP AX
     RET
 
-PRINT_SNAKE        ENDP     
-
+PRINT_PJ        ENDP
 ; ****************************************
 ; Prints character and attribute in the 
 ; current cursor position, page 0 
@@ -792,15 +834,15 @@ PRINT_SCORE        ENDP
 ;   END_GAME memory variable
 ;   INT_COUNT memory variable
 ;   DIV_SPEED memory variable
-;   INC_COL memory variable
-;   INC_ROW memory variable
-;   ATTR_SNAKE constant
+;   INC_COL_PJ memory variable
+;   INC_ROW_PJ memory variable
+;   ATTR_PJ constant
 ;   NUM_TILES memory variable
 ;   NUM_TILES_INC_SPEED
 ; Calls:
 ;   MOVE_CURSOR
 ;   READ_SCREEN_CHAR
-;   PRINT_SNAKE
+;   PRINT_PJ
 ; ****************************************
 PUBLIC NEW_TIMER_INTERRUPT
 NEW_TIMER_INTERRUPT PROC NEAR
@@ -823,20 +865,20 @@ NEW_TIMER_INTERRUPT PROC NEAR
     MOV [INT_COUNT], 0
 
     ; Load worm coordinates
-    ADD DL, [INC_COL]
-    ADD DH, [INC_ROW]
+    ADD DL, [INC_COL_PJ]
+    ADD DH, [INC_ROW_PJ]
 
     ; Move snake on the screen
     CALL MOVE_CURSOR
 
     ; Check if snake collided with the field or with himself
     CALL READ_SCREEN_CHAR
-    CMP AH, ATTR_FIELD
+    CMP AH, ATTR_FIELD_LIMITS
     JZ END_SNAKES
 
     ; Increment the length of the snake
     INC [NUM_TILES]
-    CALL PRINT_SNAKE
+    CALL PRINT_PJ
 
     ; Check if it is time to increase the speed of the snake
     CMP [DIV_SPEED], 1
@@ -947,9 +989,9 @@ DATA_SEG	SEGMENT	PUBLIC
 			
     OLD_INTERRUPT_BASE    DW  0, 0  ; Stores the current (system) timer ISR address
 
-    ; (INC_ROW. INC_COL) may be (-1, 0, 1), and determine the direction of movement of the snake
-    INC_ROW DB 0    
-    INC_COL DB 0
+    ; (INC_ROW_PJ. INC_COL_PJ) may be (-1, 0, 1), and determine the direction of movement of the snake
+    INC_ROW_PJ DB 0    
+    INC_COL_PJ DB 0
 
     NUM_TILES DW 0              ; SNAKE LENGTH
     NUM_TILES_INC_SPEED DB 20   ; THE SPEED IS INCREASED EVERY 'NUM_TILES_INC_SPEED'
