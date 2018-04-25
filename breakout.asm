@@ -281,17 +281,18 @@ DRAW_FIELD PROC NEAR
     PUSH BX
     PUSH DX
 
-    MOV AL, ASCII_FIELD
-    MOV BL, ATTR_FIELD_WALLS
-
+	MOV AL, ASCII_FIELD; el char es el mismo para todos
+	
     MOV DL, FIELD_C2
   UP_DOWN_SCREEN_LIMIT:
     MOV DH, FIELD_R1
-    CALL MOVE_CURSOR
+    CALL MOVE_CURSOR	
+    MOV BL, ATTR_FIELD_TOP
     CALL PRINT_CHAR_ATTR
 
     MOV DH, FIELD_R2
     CALL MOVE_CURSOR
+	MOV BL, ATTR_FIELD_DOWN
     CALL PRINT_CHAR_ATTR
 
     DEC DL
@@ -299,6 +300,7 @@ DRAW_FIELD PROC NEAR
     JNS UP_DOWN_SCREEN_LIMIT
 
     MOV DH, FIELD_R2
+	MOV BL, ATTR_FIELD_WALLS; las dos paredes naranjas
   LEFT_RIGHT_SCREEN_LIMIT:
     MOV DL, FIELD_C1
     CALL MOVE_CURSOR
@@ -376,6 +378,32 @@ DRAW_BLOCKS PROC NEAR
 
 DRAW_BLOCKS       ENDP
 ; ****************************************
+; Moves de cursor to the player Pos and moves it to the next pos
+; Entry: 
+; 
+; Returns: DH, DL (row, col) on PJ next pos
+;   
+; Modifies:
+;   
+; Uses:  
+;	position of pj: POS_ROW_PJ, POS_COL_PJ
+; Calls:
+;   MOVE_CURSOR
+; ****************************************
+PUBLIC MOVE_CURSOR_FOR_PJ
+MOVE_CURSOR_FOR_PJ PROC NEAR
+	MOV DL, [POS_COL_PJ]
+	MOV DH, [POS_ROW_PJ]
+	    ; Load worm coordinates
+    ADD DL, [INC_COL_PJ]
+    ADD DH, [INC_ROW_PJ]
+	
+	CALL MOVE_CURSOR
+	RET
+	
+MOVE_CURSOR_FOR_PJ ENDP
+
+; ****************************************
 ; Prints a new tile of the snake, at the current cursos position
 ; Entry: 
 ; 
@@ -446,6 +474,34 @@ END_PRINT_PJ:
     RET
 
 PRINT_PJ        ENDP 
+; ****************************************
+; Does all the player move the cursor, calculate colision with ; walls and prints it
+; Entry: 
+; 
+; Returns:
+;   
+; Modifies: POS_COL_PJ, POS_ROW_PJ
+;   
+; Uses: 
+;   character: ASCII_BALL
+;   attribute: ATTR_BALL
+; Calls:
+;   MOVE_CURSOR_FOR_PJ, PRINT_PJ
+; ****************************************
+PUBLIC MOVE_PJ
+MOVE_PJ PROC NEAR
+	PUSH DX
+	CALL MOVE_CURSOR_FOR_PJ
+	
+	CALL PRINT_PJ
+	
+	MOV [POS_COL_PJ], DL
+	MOV [POS_ROW_PJ], DH
+	
+	POP DX
+	RET
+MOVE_PJ ENDP
+
 
 ; ****************************************
 ; Prints a new tile of the snake, at the current cursos position
@@ -971,28 +1027,7 @@ NEW_TIMER_INTERRUPT PROC NEAR
     JNZ END_ISR
     MOV [INT_COUNT], 0
 
-	MOV DL, [POS_COL_PJ]
-	MOV DH, [POS_ROW_PJ]
-    ; Load worm coordinates
-    ADD DL, [INC_COL_PJ]
-    ADD DH, [INC_ROW_PJ]
-	
-	MOV [POS_COL_PJ], DL
-	MOV [POS_ROW_PJ], DH
-	
-    ; Move snake on the screen
-    CALL MOVE_CURSOR
-	
-    ; Check if snake collided with the field or with himself
-    CALL READ_SCREEN_CHAR
-    CMP AH, ATTR_FIELD_WALLS
-    JZ END_SNAKES
-
-
-    ; Increment the length of the snake
-    INC [NUM_TILES]
-    CALL PRINT_PJ
-
+	CALL MOVE_PJ
 	;Load BALL coordinates
 	MOV DL, [POS_COL_BALL]
     MOV DH, [POS_ROW_BALL]
@@ -1112,11 +1147,11 @@ DATA_SEG	SEGMENT	PUBLIC
 			
     OLD_INTERRUPT_BASE    DW  0, 0  ; Stores the current (system) timer ISR address
 	
-	; Position of the PJ
+	; Position of the PJ initialized to the intial position
     POS_ROW_PJ DB INITIAL_POS_ROW_PJ    
     POS_COL_PJ DB INITIAL_POS_COL_PJ
 	
-	; Position of the ball
+	; Position of the ball initialized to the initial position
     POS_ROW_BALL DB SCREEN_MAX_ROWS-5    
     POS_COL_BALL DB SCREEN_MAX_COLS/2
 	
