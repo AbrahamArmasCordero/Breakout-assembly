@@ -17,9 +17,11 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
     ASCII_UP          EQU 048h
     ASCII_DOWN        EQU 050h
     ASCII_QUIT        EQU 071h ; 'q'
+	ASCII_LEFT_A	  EQU 061h 
+	ASCII_RIGHT_D	  EQU 064h
 
 ; ASCII / ATTR CODES TO DRAW THE SNAKE
-    ASCII_PJ     EQU 02Ah
+    ASCII_PJ     EQU 02Dh
     ATTR_PJ      EQU 070h
 	
 ; ASCII / ATTR CODES TO DRAW THE SNAKE
@@ -49,7 +51,7 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
     
 ; COLOR SCREEN DIMENSIONS IN NUMBER OF CHARACTERS
     SCREEN_MAX_ROWS EQU 25
-    SCREEN_MAX_COLS EQU 80
+    SCREEN_MAX_COLS EQU 25
 
 ; FIELD DIMENSIONS
     FIELD_R1 EQU 1
@@ -71,98 +73,96 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
 ; Our executable assembly code starts here in the .code section
 ; *************************************************************************
 CODE_SEG	SEGMENT PUBLIC
-			ORG 100h
+	ORG 100h
 
 MAIN 	PROC 	NEAR
 
-  MAIN_GO:
+MAIN_GO:
 
-      CALL REGISTER_TIMER_INTERRUPT
+	CALL REGISTER_TIMER_INTERRUPT
 
-      CALL INIT_GAME
-      CALL INIT_SCREEN
-      CALL HIDE_CURSOR
-      CALL DRAW_FIELD
-	  CALL DRAW_BLOCKS
+	CALL INIT_GAME
+	CALL INIT_SCREEN
+	CALL HIDE_CURSOR
+	CALL DRAW_FIELD
+	CALL DRAW_BLOCKS
 
-      MOV DH, INITIAL_POS_ROW_PJ
-      MOV DL, INITIAL_POS_COL_PJ
-      
-      CALL MOVE_CURSOR
-      
-  MAIN_LOOP:
-      CMP [END_GAME], TRUE
-      JZ END_PROG
+	MOV DH, INITIAL_POS_ROW_PJ
+	MOV DL, INITIAL_POS_COL_PJ
 
-      ; Check if a key is available to read
-      MOV AH, 0Bh
-      INT 21h
-      CMP AL, 0
-      JZ MAIN_LOOP
+	CALL MOVE_CURSOR
 
-      ; A key is available -> read
-      CALL READ_CHAR      
+MAIN_LOOP:
+	CMP [END_GAME], TRUE
+	JZ END_PROG
 
-      ; End game?
-      CMP AL, ASCII_QUIT
-      JZ END_PROG
-      
-      ; Is it an special key?
-      CMP AL, ASCII_SPECIAL_KEY
-      JNZ MAIN_LOOP
-      
-      CALL READ_CHAR
+	; Check if a key is available to read
+	MOV AH, 0Bh
+	INT 21h
+	CMP AL, 0
+	JZ MAIN_LOOP
 
-      ; The game is on!
-      MOV [START_GAME], TRUE
+	; A key is available -> read
+	CALL READ_CHAR      
 
-      CMP AL, ASCII_RIGHT
-      JZ RIGHT_KEY
-      CMP AL, ASCII_LEFT
-      JZ LEFT_KEY
-      CMP AL, ASCII_UP
-      JZ UP_KEY
-      CMP AL, ASCII_DOWN
-      JZ DOWN_KEY
-      
-      JMP MAIN_LOOP
+	; End game?
+	CMP AL, ASCII_QUIT
+	JZ END_PROG
 
-  RIGHT_KEY:
-      MOV [INC_COL_PJ], 1
-      MOV [INC_ROW_PJ], 0
-      JMP END_KEY
+	; Is it an special key?
+	CMP AL, ASCII_SPECIAL_KEY
+	JZ READ_ESPECIAL_CHAR
+	JMP INPUT_NORMAL_CHAR
 
-  LEFT_KEY:
-      MOV [INC_COL_PJ], -1
-      MOV [INC_ROW_PJ], 0
-      JMP END_KEY
+READ_ESPECIAL_CHAR:
+	CALL READ_CHAR
+	
+	; The game is on!
+	MOV [START_GAME], TRUE
 
-  UP_KEY:
-      MOV [INC_COL_PJ], 0 ;0
-      MOV [INC_ROW_PJ], -1 ;0
-      JMP END_KEY
+	CMP AL, ASCII_RIGHT
+	JZ RIGHT_KEY
+	CMP AL, ASCII_LEFT
+	JZ LEFT_KEY
+	JMP MAIN_LOOP
+	
+INPUT_NORMAL_CHAR:
+	MOV [START_GAME], TRUE
+	
+	CMP AL, ASCII_RIGHT_D
+	JZ RIGHT_KEY
+	CMP AL, ASCII_LEFT_A
+	JZ LEFT_KEY
+	
+	JMP MAIN_LOOP
 
-  DOWN_KEY:
-      MOV [INC_COL_PJ], 0 ;0
-      MOV [INC_ROW_PJ], 1; 0
-      JMP END_KEY
-      
-  END_KEY:
-      JMP MAIN_LOOP
+RIGHT_KEY:
+	MOV [INC_COL_PJ], 1
+	MOV [INC_ROW_PJ], 0
+	JMP END_KEY
 
-  END_PROG:
-      CALL RESTORE_TIMER_INTERRUPT
-      CALL SHOW_CURSOR
-      CALL PRINT_SCORE_STRING
-      CALL PRINT_SCORE
-      CALL PRINT_PLAY_AGAIN_STRING
-      
-      CALL READ_CHAR
+LEFT_KEY:
+	MOV [INC_COL_PJ], -1
+	MOV [INC_ROW_PJ], 0
+	JMP END_KEY
 
-      CMP AL, ASCII_YES_UPPERCASE
-      JZ MAIN_GO
-      CMP AL, ASCII_YES_LOWERCASE
-      JZ MAIN_GO
+END_KEY:
+	CALL MOVE_PJ
+	JMP MAIN_LOOP
+
+END_PROG:
+	CALL RESTORE_TIMER_INTERRUPT
+	CALL SHOW_CURSOR
+	CALL PRINT_SCORE_STRING
+	CALL PRINT_SCORE
+	CALL PRINT_PLAY_AGAIN_STRING
+
+	CALL READ_CHAR
+
+	CMP AL, ASCII_YES_UPPERCASE
+	JZ MAIN_GO
+	CMP AL, ASCII_YES_LOWERCASE
+	JZ MAIN_GO
 
 	INT 20h		
 
@@ -221,7 +221,7 @@ INIT_GAME	ENDP
 PUBLIC  READ_CHAR
 READ_CHAR PROC NEAR
 
-    MOV AH, 8
+    MOV AH, 08h
     INT 21h
 
     RET
@@ -281,17 +281,18 @@ DRAW_FIELD PROC NEAR
     PUSH BX
     PUSH DX
 
-    MOV AL, ASCII_FIELD
-    MOV BL, ATTR_FIELD_WALLS
-
+	MOV AL, ASCII_FIELD; el char es el mismo para todos
+	
     MOV DL, FIELD_C2
   UP_DOWN_SCREEN_LIMIT:
     MOV DH, FIELD_R1
-    CALL MOVE_CURSOR
+    CALL MOVE_CURSOR	
+    MOV BL, ATTR_FIELD_TOP
     CALL PRINT_CHAR_ATTR
 
     MOV DH, FIELD_R2
     CALL MOVE_CURSOR
+	MOV BL, ATTR_FIELD_DOWN
     CALL PRINT_CHAR_ATTR
 
     DEC DL
@@ -299,6 +300,7 @@ DRAW_FIELD PROC NEAR
     JNS UP_DOWN_SCREEN_LIMIT
 
     MOV DH, FIELD_R2
+	MOV BL, ATTR_FIELD_WALLS; las dos paredes naranjas
   LEFT_RIGHT_SCREEN_LIMIT:
     MOV DL, FIELD_C1
     CALL MOVE_CURSOR
@@ -376,6 +378,53 @@ DRAW_BLOCKS PROC NEAR
 
 DRAW_BLOCKS       ENDP
 ; ****************************************
+; Moves de cursor to the player Pos and moves it to the next pos
+; Entry: 
+; 
+; Returns: DH, DL (row, col) on PJ next pos
+;   
+; Modifies:
+;   
+; Uses:  
+;	position of pj: POS_ROW_PJ, POS_COL_PJ
+; Calls:
+;   MOVE_CURSOR
+; ****************************************
+PUBLIC MOVE_CURSOR_FOR_PJ
+MOVE_CURSOR_FOR_PJ PROC NEAR
+	CALL MOVE_CURSOR_TO_PJ
+    ADD DL, [INC_COL_PJ]
+    ADD DH, [INC_ROW_PJ]
+	
+	CALL MOVE_CURSOR
+	RET
+	
+MOVE_CURSOR_FOR_PJ ENDP
+
+; ****************************************
+; Prints a new tile of the snake, at the current cursos position
+; Entry: 
+; 
+; Returns:
+;   
+; Modifies:
+;   
+; Uses: 
+;   character: ASCII_PJ
+;   attribute: ATTR_PJ
+; Calls:
+;   PRINT_CHAR_ATTR
+; ****************************************
+PUBLIC MOVE_CURSOR_TO_PJ
+MOVE_CURSOR_TO_PJ PROC NEAR
+	MOV DL, [POS_COL_PJ]
+	MOV DH, [POS_ROW_PJ]
+	CALL MOVE_CURSOR
+	RET
+	
+MOVE_CURSOR_TO_PJ ENDP
+
+; ****************************************
 ; Prints a new tile of the snake, at the current cursos position
 ; Entry: 
 ; 
@@ -409,13 +458,12 @@ PRINT_PJ PROC NEAR
 	CALL MOVE_CURSOR
 	POP DX
 	CALL PRINT_CHAR_ATTR
-	;DEBUG
-	;JMP END_PRINT_PJ
 	;BORREMOS LA PALA 
 	CMP	INC_COL_PJ, 1 ; SI SE MUEVE HACIA LA DERECHA
 	JZ REMOVE_LEFT
 	CMP	INC_COL_PJ, -1 ; SI SE MUEVE HACIA LA DERECHA
 	JZ REMOVE_RIGHT
+	JMP END_PRINT_PJ
 	
 REMOVE_LEFT:
 	; muevo el cursor hacia la barra que quiero borrar
@@ -446,6 +494,66 @@ END_PRINT_PJ:
     RET
 
 PRINT_PJ        ENDP 
+; ****************************************
+; Does all the player move the cursor, calculate colision with ; walls and prints it
+; Entry: 
+; 
+; Returns:
+;   
+; Modifies: POS_COL_PJ, POS_ROW_PJ
+;   
+; Uses: 
+;   character: ASCII_BALL
+;   attribute: ATTR_BALL
+; Calls:
+;   MOVE_CURSOR_FOR_PJ, PRINT_PJ
+; ****************************************
+PUBLIC MOVE_PJ
+MOVE_PJ PROC NEAR
+	PUSH AX
+	
+	CALL MOVE_CURSOR_TO_PJ
+	CMP	INC_COL_PJ, 1 ; SI SE MUEVE HACIA LA DERECHA
+	JZ COLL_RIGHT
+	CMP	INC_COL_PJ, -1 ; SI SE MUEVE HACIA LA DERECHA
+	JZ COLL_LEFT
+	JMP END_PRINT
+
+NO_INC_POS_PJ:
+	MOV [INC_COL_PJ], 0
+	MOV [INC_ROW_PJ], 0
+	JMP END_PRINT
+
+COLL_RIGHT:
+	PUSH DX
+	ADD DL, 2
+	CALL MOVE_CURSOR
+	POP DX
+	CALL READ_SCREEN_CHAR
+	CMP AH, ATTR_FIELD_WALLS
+	JZ NO_INC_POS_PJ
+	JMP END_PRINT
+	
+COLL_LEFT:
+	PUSH DX
+	ADD DL, -2
+	CALL MOVE_CURSOR
+	POP DX
+	CALL READ_SCREEN_CHAR
+	CMP AH, ATTR_FIELD_WALLS
+	JZ NO_INC_POS_PJ
+	
+END_PRINT:
+	CALL MOVE_CURSOR_FOR_PJ
+	CALL PRINT_PJ
+	
+	MOV [POS_COL_PJ], DL
+	MOV [POS_ROW_PJ], DH
+	
+	POP AX
+	RET
+MOVE_PJ ENDP
+
 
 ; ****************************************
 ; Prints a new tile of the snake, at the current cursos position
@@ -971,28 +1079,6 @@ NEW_TIMER_INTERRUPT PROC NEAR
     JNZ END_ISR
     MOV [INT_COUNT], 0
 
-	MOV DL, [POS_COL_PJ]
-	MOV DH, [POS_ROW_PJ]
-    ; Load worm coordinates
-    ADD DL, [INC_COL_PJ]
-    ADD DH, [INC_ROW_PJ]
-	
-	MOV [POS_COL_PJ], DL
-	MOV [POS_ROW_PJ], DH
-	
-    ; Move snake on the screen
-    CALL MOVE_CURSOR
-	
-    ; Check if snake collided with the field or with himself
-    CALL READ_SCREEN_CHAR
-    CMP AH, ATTR_FIELD_WALLS
-    JZ END_SNAKES
-
-
-    ; Increment the length of the snake
-    INC [NUM_TILES]
-    CALL PRINT_PJ
-
 	;Load BALL coordinates
 	MOV DL, [POS_COL_BALL]
     MOV DH, [POS_ROW_BALL]
@@ -1112,11 +1198,11 @@ DATA_SEG	SEGMENT	PUBLIC
 			
     OLD_INTERRUPT_BASE    DW  0, 0  ; Stores the current (system) timer ISR address
 	
-	; Position of the PJ
+	; Position of the PJ initialized to the intial position
     POS_ROW_PJ DB INITIAL_POS_ROW_PJ    
     POS_COL_PJ DB INITIAL_POS_COL_PJ
 	
-	; Position of the ball
+	; Position of the ball initialized to the initial position
     POS_ROW_BALL DB SCREEN_MAX_ROWS-5    
     POS_COL_BALL DB SCREEN_MAX_COLS/2
 	
