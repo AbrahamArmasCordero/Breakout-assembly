@@ -1067,6 +1067,12 @@ MOVE_BALL PROC NEAR
 	MOV AL, ASCII_FIELD
     MOV BL, ATTR_FIELD_INSIDE
 	CALL PRINT_CHAR_ATTR
+;Comprobamos las colisiones
+;Paredes
+;Player
+;Bloques	
+
+	
 ; Añadimos el incremento de posicion
 	ADD DL,[INC_COL_BALL]
 	ADD DH,[INC_ROW_BALL]
@@ -1085,7 +1091,279 @@ MOVE_BALL PROC NEAR
     RET
 
 MOVE_BALL       ENDP
+; ****************************************
+; Check and take action on colision with blocks and field limits
+; Entry: 
+;   
+; Returns:
+;   -
+; Modifies:
+;   -
+; Uses: 
+;   POS_COL_BALL
+;	POS_ROW_BALL
+;	ASCII_FIELD
+;	ATTR_FIELD_INSIDE
+;	INC_COL_BALL
+;	INC_ROW_BALL
+;	POS_COL_BALL
+;	POS_ROW_BALL
+; Calls:
+;   MOVE_CURSOR
 
+; ****************************************
+PUBLIC BALL_COLISION
+BALL_COLISION PROC NEAR
+
+
+	RET
+BALL_COLISION ENDP
+; ****************************************
+; Check if wheter the given position is a limit or block
+; Entry: 
+;   AH: X coord of the position
+;	AL: Y coord of the position
+; Returns:
+;   BALL_CHECK_COLISION boolean
+; Modifies:
+;   -
+; Uses: 
+;	ASCII_FIELD
+;	ATTR_FIELD_INSIDE
+; Calls:
+;   MOVE_CURSOR
+;	READ_SCREEN_CHAR
+; ****************************************
+PUBLIC 	CHECK_COLLISION
+CHECK_COLLISION PROC NEAR
+	PUSH AX
+	PUSH DX
+	
+	MOV DL,AH
+	MOV DH,AL
+    CALL MOVE_CURSOR		; Muevo el cursor a la posicion dada
+	
+    CALL READ_SCREEN_CHAR	; Leo el char y atributo que hay en la posicion
+    CMP AH, ATTR_FIELD_WALLS
+    JZ RETURN_TRUE
+	
+SECOND_CONDITION:
+	CMP AH, ATTR_BLOCKS
+    JZ RETURN_TRUE
+	JMP RETURN_FALSE	
+	
+RETURN_TRUE:
+	MOV [BALL_CHECK_COLISION],01
+	JMP END_FUNCTION
+RETURN_FALSE:
+	MOV [BALL_CHECK_COLISION],00
+	
+END_FUNCTION:
+	POP DX
+	POP AX
+
+	RET
+CHECK_COLLISION ENDP
+; ****************************************
+; Check if wheter the given position is a block
+; Entry: 
+;   AH: X coord of the position
+;	AL: Y coord of the position
+; Returns:
+;   BALL_COLISION_BLOCK boolean
+; Modifies:
+;   -
+; Uses: 
+;	BALL_COLISION_BLOCK
+;   READ_SCREEN_CHAR
+; Calls:
+;   MOVE_CURSOR
+
+; ****************************************
+PUBLIC 	CHECK_COLLISION_BLOCK
+CHECK_COLLISION_BLOCK PROC NEAR
+	PUSH AX
+	PUSH DX
+	
+	MOV DL,AH
+	MOV DH,AL
+    CALL MOVE_CURSOR		; Muevo el cursor a la posicion dada
+    CALL READ_SCREEN_CHAR	; Leo el char y atributo que hay en la posicion
+    CMP AH, ATTR_BLOCKS
+    JZ RETURN_TRUE
+	
+RETURN_TRUE:
+	MOV [BALL_COLISION_BLOCK],1
+	JMP END_FUNCTION
+RETURN_FALSE:
+	MOV [BALL_COLISION_BLOCK],0
+	
+END_FUNCTION:
+	POP DX
+	POP AX
+	CALL MOVE_CURSOR
+	RET
+CHECK_COLLISION_BLOCK ENDP
+; ****************************************
+; Write the 'space' char on the given coordinates
+; Entry: 
+;   AH: X coord of the position
+;	AL: Y coord of the position
+; Returns:
+;   -
+; Modifies:
+;   -
+; Uses: 
+;	ASCII_FIELD
+;   ATTR_FIELD_INSIDE
+; Calls:
+;   MOVE_CURSOR
+
+; ****************************************
+PUBLIC 	DESTROY_BLOCK
+DESTROY_BLOCK PROC NEAR
+	PUSH AX
+	PUSH DX
+	PUSH BX
+	
+	MOV DL,AH
+	MOV DH,AL
+    CALL MOVE_CURSOR		; Muevo el cursor a la posicion dada
+    MOV AL, ASCII_FIELD
+	MOV BL, ATTR_FIELD_INSIDE
+	CALL PRINT_CHAR_ATTR
+
+	POP BX
+	POP DX
+	POP AX
+	
+	CALL MOVE_CURSOR ; DEVUELVO EL CURSOR A SU POSICION INICIAL
+	RET
+DESTROY_BLOCK ENDP
+; ****************************************
+; Calculate the coordinates of the actual top and next position of the ball, it depens of the velocity(INC_COL_BALL,INC_ROW_BALL)
+; Entry: 
+;   -
+; Returns:
+;   -
+; Modifies:
+;	BALL_TOP_X
+;	BALL_TOP_Y
+;   BALL_LADO_X
+;	BALL_LADO_Y
+; Uses: 
+;	INC_ROW_BALL
+;	INC_COL_BALL
+;	AX
+; Calls:
+;   -
+; ****************************************
+PUBLIC 	CALCULATE_TOP_LADO
+CALCULATE_TOP_LADO PROC NEAR
+	PUSH AX
+	
+	CMP[INC_ROW_BALL],0	; Comparo si la velocidad en Y en positiva o negativa
+	JNS VEL_Y_POS
+	JMP VEL_Y_NEG
+	
+VEL_Y_POS:
+	CMP [INC_COL_BALL],0 ; Comparo si la velocidad en X en positiva o negativa
+	JS VEL_X_NEG
+	
+	VEL_X_POS:	;La velocidad es +1/+1
+		MOV AL,[POS_COL_BALL]
+		MOV [BALL_TOP_X],AL	;TopX = BallX
+		
+		MOV AL,[POS_ROW_BALL]
+		PUSH AX
+		INC AL
+		MOV [BALL_TOP_Y],AL	;TopY = BallY + 1
+		POP AX
+		MOV [POS_ROW_BALL],AL
+		
+		MOV AL,[POS_COL_BALL]
+		PUSH AX
+		INC AL
+		MOV [BALL_LADO_X],AL ;LadoX = BallX + 1
+		POP AX
+		MOV [POS_COL_BALL],AL
+		
+		MOV AL, [POS_ROW_BALL]
+		MOV [BALL_LADO_Y],AL ;LadoY = BallY
+		JMP FUNCTION_END
+	VEL_X_NEG:	;La velocidad es -1/+1
+		MOV AL,[POS_COL_BALL]
+		MOV [BALL_TOP_X],AL	;TopX = BallX
+		
+		MOV AL,[POS_ROW_BALL]
+		PUSH AX
+		INC AL
+		MOV [BALL_TOP_Y],AL	;TopY = BallY + 1
+		POP AX
+		MOV [POS_ROW_BALL],AL
+		
+		MOV AL,[POS_COL_BALL]
+		PUSH AX
+		DEC AL
+		MOV [BALL_LADO_X],AL ;LadoX = BallX - 1
+		POP AX
+		MOV [POS_COL_BALL],AL
+		
+		MOV AL,[POS_ROW_BALL]
+		MOV [BALL_LADO_Y],AL ;LadoY = BallY
+		JMP FUNCTION_END
+VEL_Y_NEG:
+	CMP [INC_COL_BALL],0
+	JS VEL_X_NEG_Y_NEG
+	
+	VEL_X_POS_Y_NEG:	;La velocidad es +1/-1
+		MOV AL,[POS_COL_BALL]
+		MOV [BALL_TOP_X],AL	;TopX = BallX
+		
+		MOV AL,[POS_ROW_BALL]
+		PUSH AX
+		DEC AL
+		MOV [BALL_TOP_Y],AL ;TopY = BallY - 1
+		POP AX
+		MOV [POS_ROW_BALL],AL
+		
+		MOV AL,[POS_COL_BALL]
+		PUSH AX
+		INC AL
+		MOV [BALL_LADO_X],AL ;LadoX = BallX + 1
+		POP AX
+		MOV [POS_COL_BALL],AL
+		
+		MOV AL,[POS_ROW_BALL]
+		MOV [BALL_LADO_Y],AL ;LadoY = BallY
+		JMP FUNCTION_END
+	VEL_X_NEG_Y_NEG:	;La velocidad es -1/-1
+		MOV AL,[POS_COL_BALL]
+		MOV [BALL_TOP_X],AL ;TopX = BallX
+		
+		MOV AL, [POS_ROW_BALL]
+		PUSH AX
+		DEC AL
+		MOV [BALL_TOP_Y],AL ;TopY = BallY - 1
+		POP AX
+		MOV [POS_ROW_BALL],AL
+		
+		MOV AL, [POS_COL_BALL]
+		PUSH AX
+		DEC AL
+		MOV [BALL_LADO_X],AL ;LadoX = BallX - 1
+		POP AX
+		MOV [POS_COL_BALL],AL
+		
+		MOV AL,[POS_ROW_BALL]
+		MOV [BALL_LADO_Y],AL ;LadoY = BallY
+		JMP FUNCTION_END
+	
+FUNCTION_END:
+	POP AX
+	RET
+	
+CALCULATE_TOP_LADO ENDP
 ; ****************************************
 ; Game timer interrupt service routine
 ; Called 18.2 times per second by the operating system
@@ -1274,7 +1552,18 @@ DATA_SEG	SEGMENT	PUBLIC
 
     SCORE_STR           DB "Your score is $"
     PLAY_AGAIN_STR      DB ". Do you want to play again? (Y/N)$"
-    
+	
+	BALL_CHECK_COLISION DB 0			;	Wheter the given position colision or not 	
+    BALL_COLISION_BLOCK DB 0	;	Wheter the given position colision is a block or not	
+	
+	BALL_TOP DB 0				;	Wheter the ball top position colision or not 
+	BALL_TOP_X DB 0				;	Ball top position, coordinate x
+	BALL_TOP_Y DB 0				;	Ball top position, coordinate y
+	BALL_LADO DB 0				;	Wheter the ball next position colision or not 
+	BALL_LADO_X DB 0			;	Ball lado position, coordinate x
+	BALL_LADO_Y DB 0			;	Ball lado position, coordinate y	
+	BALL_NEXT DB 0				;	Wheter the ball next movement position colision or not 	
+	
 DATA_SEG	ENDS
 
 		END MAIN
