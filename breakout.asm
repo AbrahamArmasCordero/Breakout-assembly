@@ -1191,7 +1191,7 @@ TOP_FALSE:
 LADO_TRUE:
 	;Comparamos que la velocidad en Y sea diferente a 0
 	CMP [INC_COL_BALL],0
-	JZ LADO_TRUE_JUMP
+	JZ LADO_FALSE
 	
 	PUSH AX
 	;INVIERTE LA VELOCIDAD EN X
