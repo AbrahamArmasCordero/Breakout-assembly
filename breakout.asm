@@ -1049,7 +1049,8 @@ PRINT_SCORE        ENDP
 ; Returns:
 ;   -
 ; Modifies:
-;   -
+;   POS_COL_BALL
+;	POS_ROW_BALL
 ; Uses: 
 ;   POS_COL_BALL
 ;	POS_ROW_BALL
@@ -1057,8 +1058,6 @@ PRINT_SCORE        ENDP
 ;	ATTR_FIELD_INSIDE
 ;	INC_COL_BALL
 ;	INC_ROW_BALL
-;	POS_COL_BALL
-;	POS_ROW_BALL
 ; Calls:
 ;   MOVE_CURSOR
 ;	PRINT_CHAR_ATTR
@@ -1101,17 +1100,34 @@ MOVE_BALL PROC NEAR
 
 MOVE_BALL       ENDP
 ; ****************************************
-; Checks if the ball its on collision with a wall
+; Check and take action on colision with blocks and field limits.
+; If it's a block, draws a 'space' to destroy it.
 ; Entry: 
-;   
-; Returns: INC_COL_BALL, INC_ROW_BALL
+;   -
+; Returns:
 ;   -
 ; Modifies:
-;   -
+;   INC_COL_BALL
+;	INC_ROW_BALL
 ; Uses: 
-;
+;	BALL_TOP
+;	BALL_TOP_X
+;	BALL_TOP_Y
+;	BALL_LADO
+;	BALL_LADO_X
+;	BALL_LADO_Y
+;	BALL_NEXT
+;	BALL_NEXT_X
+;	BALL_NEXT_Y
+;	INC_COL_BALL
+;	INC_ROW_BALL
+;	BALL_COLISION
+;	BALL_COLISION_BLOCK
 ; Calls:
-;
+;   MOVE_CURSOR
+;	CHECK_COLLISION
+;	CHECK_COLLISION_BLOCK
+;	DESTROY_BLOCK
 ; ****************************************
 PUBLIC BALL_PLAYER
 BALL_PLAYER PROC NEAR
@@ -1220,11 +1236,16 @@ TOP_TRUE_JUMP:
 	JMP START
 		
 TOP_FALSE: 
+
 	;MIRAMOS SI HAY BLOQUE AL LADO DE LA PELOTA	
 	CMP [BALL_LADO],TRUE
 	JNZ LADO_FALSE
 	
 LADO_TRUE:
+	;Comparamos que la velocidad en Y sea diferente a 0
+	CMP [INC_COL_BALL],0
+	JZ LADO_FALSE
+	
 	PUSH AX
 	;INVIERTE LA VELOCIDAD EN X
 	MOV AL,-1
@@ -1293,12 +1314,13 @@ BALL_COLISION ENDP
 ;   AH: X coord of the position
 ;	AL: Y coord of the position
 ; Returns:
-;   BALL_CHECK_COLISION boolean
-; Modifies:
 ;   -
+; Modifies:
+;   BALL_CHECK_COLISION
 ; Uses: 
 ;	ASCII_FIELD
 ;	ATTR_FIELD_INSIDE
+;   BALL_CHECK_COLISION
 ; Calls:
 ;   MOVE_CURSOR
 ;	READ_SCREEN_CHAR
@@ -1339,15 +1361,15 @@ CHECK_COLLISION ENDP
 ;   AH: X coord of the position
 ;	AL: Y coord of the position
 ; Returns:
-;   BALL_COLISION_BLOCK boolean
-; Modifies:
 ;   -
+; Modifies:
+;   BALL_COLISION_BLOCK
 ; Uses: 
 ;	BALL_COLISION_BLOCK
-;   READ_SCREEN_CHAR
+;	ATTR_BLOCKS
 ; Calls:
 ;   MOVE_CURSOR
-
+;   READ_SCREEN_CHAR
 ; ****************************************
 PUBLIC 	CHECK_COLLISION_BLOCK
 CHECK_COLLISION_BLOCK PROC NEAR
@@ -1387,7 +1409,7 @@ CHECK_COLLISION_BLOCK ENDP
 ;   ATTR_FIELD_INSIDE
 ; Calls:
 ;   MOVE_CURSOR
-
+;	PRINT_CHAR_ATTR
 ; ****************************************
 PUBLIC 	DESTROY_BLOCK
 DESTROY_BLOCK PROC NEAR
@@ -1410,7 +1432,7 @@ DESTROY_BLOCK PROC NEAR
 	RET
 DESTROY_BLOCK ENDP
 ; ****************************************
-; Calculate the coordinates of the actual top and next position of the ball, it depens of the velocity(INC_COL_BALL,INC_ROW_BALL)
+; Calculate the coordinates of the actual top, side and next position of the ball, it depens of the velocity(INC_COL_BALL,INC_ROW_BALL)
 ; Entry: 
 ;   -
 ; Returns:
@@ -1420,10 +1442,13 @@ DESTROY_BLOCK ENDP
 ;	BALL_TOP_Y
 ;   BALL_LADO_X
 ;	BALL_LADO_Y
+;   BALL_NEXT_X
+;	BALL_NEXT_Y
 ; Uses: 
+;	POS_COL_BALL
+;	POS_ROW_BALL
 ;	INC_ROW_BALL
 ;	INC_COL_BALL
-;	AX
 ; Calls:
 ;   -
 ; ****************************************
@@ -1727,7 +1752,7 @@ DATA_SEG	SEGMENT	PUBLIC
 	BALL_TOP DB 0				;	Wheter the ball top position colision or not 
 	BALL_TOP_X DB 0				;	Ball top position, coordinate x
 	BALL_TOP_Y DB 0				;	Ball top position, coordinate y
-	BALL_LADO DB 0				;	Wheter the ball next position colision or not 
+	BALL_LADO DB 0				;	Wheter the ball side position colision or not 
 	BALL_LADO_X DB 0			;	Ball lado position, coordinate x
 	BALL_LADO_Y DB 0			;	Ball lado position, coordinate y	
 	BALL_NEXT DB 0				;	Wheter the ball next movement position colision or not 	
