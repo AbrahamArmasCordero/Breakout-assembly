@@ -69,6 +69,9 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
 ;	Initial position of bar
 	INITIAL_POS_ROW_PJ EQU SCREEN_MAX_ROWS-4    
     INITIAL_POS_COL_PJ EQU SCREEN_MAX_COLS/2
+	; Initial position ball
+	INITIAL_POS_ROW_BALL EQU SCREEN_MAX_ROWS-5    
+	INITIAL_POS_COL_BALL EQU SCREEN_MAX_COLS/2
 ; *************************************************************************
 ; Our executable assembly code starts here in the .code section
 ; *************************************************************************
@@ -151,6 +154,13 @@ END_KEY:
 	JMP MAIN_LOOP
 
 END_PROG:
+	MOV [POS_COL_BALL], INITIAL_POS_COL_BALL
+	MOV [POS_ROW_BALL], INITIAL_POS_ROW_BALL
+	MOV [INC_COL_BALL],1
+	MOV[INC_ROW_BALL],-1
+	MOV [POS_COL_PJ], INITIAL_POS_COL_PJ
+	MOV [POS_ROW_PJ], INITIAL_POS_ROW_PJ
+	
 	CALL RESTORE_TIMER_INTERRUPT
 	CALL SHOW_CURSOR
 	CALL PRINT_SCORE_STRING
@@ -1067,6 +1077,8 @@ MOVE_BALL PROC NEAR
 	MOV AL, ASCII_FIELD
     MOV BL, ATTR_FIELD_INSIDE
 	CALL PRINT_CHAR_ATTR
+;player
+	CALL BALL_PLAYER
 ;Comprobamos las colisiones
 ;Paredes
 	CALL BALL_COLISION	
@@ -1089,25 +1101,59 @@ MOVE_BALL PROC NEAR
 
 MOVE_BALL       ENDP
 ; ****************************************
-; Check and take action on colision with blocks and field limits
+; Checks if the ball its on collision with a wall
 ; Entry: 
 ;   
-; Returns:
+; Returns: INC_COL_BALL, INC_ROW_BALL
 ;   -
 ; Modifies:
 ;   -
 ; Uses: 
-;   POS_COL_BALL
-;	POS_ROW_BALL
-;	ASCII_FIELD
-;	ATTR_FIELD_INSIDE
-;	INC_COL_BALL
-;	INC_ROW_BALL
-;	POS_COL_BALL
-;	POS_ROW_BALL
+;
 ; Calls:
-;   MOVE_CURSOR
+;
+; ****************************************
+PUBLIC BALL_PLAYER
+BALL_PLAYER PROC NEAR
+	PUSH AX
+	PUSH DX
+	ADD DL, [INC_COL_BALL]
+	ADD DH, [INC_ROW_BALL]
+	CALL MOVE_CURSOR
+	CALL READ_SCREEN_CHAR
+	CMP AH, ATTR_PJ
+	JZ CHECK_ASCIIPJ
+	JMP BALL_PJENDP
+	
+CHECK_ASCIIPJ:
+	CMP AL, ASCII_PJ
+	JZ BALL_COLLPJ
+	JMP BALL_PJENDP
+	
+BALL_COLLPJ:
+	MOV [INC_ROW_BALL], -1
+	
+	CMP DL, [POS_COL_PJ]
+	JZ COLL_PJ_CENTER
+	CMP DL, [POS_COL_PJ]+1
+	JZ COLL_PJ_RIGHT
+	CMP DL, [POS_COL_PJ]-1
+	JZ COLL_PJ_LEFT
 
+COLL_PJ_CENTER:
+	MOV [INC_COL_BALL], 0
+	JMP BALL_PJENDP
+COLL_PJ_RIGHT:
+	MOV [INC_COL_BALL], 1
+	JMP BALL_PJENDP
+COLL_PJ_LEFT:
+	MOV [INC_COL_BALL], -1
+	
+BALL_PJENDP:
+	POP DX
+	POP AX
+	RET
+BALL_PLAYER ENDP
 ; ****************************************
 PUBLIC BALL_COLISION
 BALL_COLISION PROC NEAR
@@ -1541,8 +1587,8 @@ END_SNAKES:
       MOV [END_GAME], TRUE
       MOV [POS_COL_PJ],INITIAL_POS_COL_PJ
 	  MOV [POS_ROW_PJ],INITIAL_POS_ROW_PJ
+	  
 END_ISR:
-
       POP AX
       IRET
 
@@ -1641,8 +1687,8 @@ DATA_SEG	SEGMENT	PUBLIC
     POS_COL_PJ DB INITIAL_POS_COL_PJ
 	
 	; Position of the ball initialized to the initial position
-    POS_ROW_BALL DB SCREEN_MAX_ROWS-5    
-    POS_COL_BALL DB SCREEN_MAX_COLS/2
+    POS_ROW_BALL DB INITIAL_POS_ROW_BALL    
+    POS_COL_BALL DB INITIAL_POS_COL_BALL
 	
     ; (INC_COL_PJ. INC_COL_PJ) may be (-1, 0, 1), and determine the direction of movement of the snake
     INC_ROW_PJ DB 0    
@@ -1652,10 +1698,10 @@ DATA_SEG	SEGMENT	PUBLIC
     INC_ROW_BALL DB -1    
     INC_COL_BALL DB -1
 	
-    NUM_TILES DW 0              ; SNAKE LENGTH
-    NUM_TILES_INC_SPEED DB 20   ; THE SPEED IS INCREASED EVERY 'NUM_TILES_INC_SPEED'
+    NUM_TILES DW 20             ;SNAKE LENGTH
+    NUM_TILES_INC_SPEED DB 20   ;THE SPEED IS INCREASED EVERY 'NUM_TILES_INC_SPEED'
     
-    DIV_SPEED DB 10             ; THE SNAKE SPEED IS THE (INTERRUPT FREQUENCY) / DIV_SPEED
+    DIV_SPEED DB 10            ; THE SNAKE SPEED IS THE (INTERRUPT FREQUENCY) / DIV_SPEED
     INT_COUNT DB 0              ; 'INT_COUNT' IS INCREASED EVERY INTERRUPT CALL, AND RESET WHEN IT ACHIEVES 'DIV_SPEED'
 
     START_GAME DB 0             ; 'MAIN' sets START_GAME to '1' when a key is pressed
