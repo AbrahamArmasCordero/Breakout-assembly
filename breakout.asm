@@ -190,7 +190,7 @@ MAIN	ENDP
 ;   INC_COL_PJ memory variable
 ;   INC_ROW_PJ memory variable
 ;   DIV_SPEED memory variable
-;   NUM_TILES memory variable
+;   NUM_BLOCKS memory variable
 ;   START_GAME memory variable
 ;   END_GAME memory variable
 ; Calls:
@@ -204,8 +204,9 @@ INIT_GAME         PROC    NEAR
 
     MOV [DIV_SPEED], 10
 
-    MOV [NUM_TILES], 0
-    
+    MOV [NUM_BLOCKS], 0
+    MOV [SCORE_BLOCKS], 0
+	
     MOV [START_GAME], FALSE
     MOV [END_GAME], FALSE
 
@@ -985,7 +986,7 @@ PRINT_PLAY_AGAIN_STRING       ENDP
 ; ****************************************
 ; Prints the score of the player in decimal, on the screen, 
 ; starting in the cursor position
-; NUM_TILES range: [0, 9999]
+; NUM_BLOCKS range: [0, 9999]
 ; Entry: 
 ;   -
 ; Returns:
@@ -993,7 +994,7 @@ PRINT_PLAY_AGAIN_STRING       ENDP
 ; Modifies:
 ;   -
 ; Uses: 
-;   NUM_TILES memory variable
+;   NUM_BLOCKS memory variable
 ; Calls:
 ;   PRINT_CHAR
 ; ****************************************
@@ -1006,7 +1007,7 @@ PRINT_SCORE PROC NEAR
     PUSH DX
 
     ; 1000'
-    MOV AX, [NUM_TILES]
+    MOV AX, [NUM_BLOCKS]
     XOR DX, DX
     MOV BX, 1000
     DIV BX            ; DS:AX / BX -> AX: quotient, DX: remainder
@@ -1423,7 +1424,9 @@ DESTROY_BLOCK PROC NEAR
     MOV AL, ASCII_FIELD
 	MOV BL, ATTR_FIELD_INSIDE
 	CALL PRINT_CHAR_ATTR
-
+	INC [NUM_BLOCKS]
+	INC[SCORE_BLOCKS]
+	
 	POP BX
 	POP DX
 	POP AX
@@ -1578,8 +1581,8 @@ CALCULATE_TOP_LADO ENDP
 ;   INC_COL_PJ memory variable
 ;   INC_ROW_PJ memory variable
 ;   ATTR_PJ constant
-;   NUM_TILES memory variable
-;   NUM_TILES_INC_SPEED
+;   NUM_BLOCKS memory variable
+;   NUM_BLOCKS_INC_SPEED
 ; Calls:
 ;   MOVE_CURSOR
 ;   READ_SCREEN_CHAR
@@ -1594,7 +1597,6 @@ NEW_TIMER_INTERRUPT PROC NEAR
     CALL DWORD PTR [OLD_INTERRUPT_BASE]
 
     PUSH AX
-
     ; Do nothing if game is stopped
     CMP [START_GAME], TRUE
     JNZ END_ISR
@@ -1611,11 +1613,11 @@ NEW_TIMER_INTERRUPT PROC NEAR
     ; Check if it is time to increase the speed of the snake
     CMP [DIV_SPEED], 1
     JZ END_ISR
-    MOV AX, [NUM_TILES]
-    DIV [NUM_TILES_INC_SPEED]
-    CMP AH, 0                 ; REMAINDER
+	MOV AX, [NUM_BLOCKS]
+	CMP [NUM_BLOCKS_INC_SPEED],AL
     JNZ END_ISR
-    ; DEC [DIV_SPEED]
+	MOV [NUM_BLOCKS],0
+    DEC [DIV_SPEED]
 	
     JMP END_ISR
       
@@ -1734,8 +1736,8 @@ DATA_SEG	SEGMENT	PUBLIC
     INC_ROW_BALL DB -1    
     INC_COL_BALL DB -1
 	
-    NUM_TILES DW 20             ;SNAKE LENGTH
-    NUM_TILES_INC_SPEED DB 20   ;THE SPEED IS INCREASED EVERY 'NUM_TILES_INC_SPEED'
+    NUM_BLOCKS DW 1             ;SNAKE LENGTH
+    NUM_BLOCKS_INC_SPEED DB 4   ;THE SPEED IS INCREASED EVERY 'NUM_BLOCKS_INC_SPEED'
     
     DIV_SPEED DB 10            ; THE SNAKE SPEED IS THE (INTERRUPT FREQUENCY) / DIV_SPEED
     INT_COUNT DB 0              ; 'INT_COUNT' IS INCREASED EVERY INTERRUPT CALL, AND RESET WHEN IT ACHIEVES 'DIV_SPEED'
@@ -1758,6 +1760,8 @@ DATA_SEG	SEGMENT	PUBLIC
 	BALL_NEXT DB 0				;	Wheter the ball next movement position colision or not 	
 	BALL_NEXT_X DB 0			;	Ball NEXT position, coordinate x
 	BALL_NEXT_Y DB 0			;	Ball NEXT position, coordinate y	
+	
+	SCORE_BLOCKS Dw 0			;	Score of the player
 	
 DATA_SEG	ENDS
 
