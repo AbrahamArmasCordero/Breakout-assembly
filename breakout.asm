@@ -24,7 +24,7 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
     ASCII_PJ     EQU 02Dh
     ATTR_PJ      EQU 070h
 	
-; ASCII / ATTR CODES TO DRAW THE SNAKE
+; ASCII / ATTR CODES TO DRAW THE PJ
     ASCII_BALL     EQU 02Ah
     ATTR_BALL      EQU 007h
 
@@ -157,7 +157,8 @@ END_PROG:
 	MOV [POS_COL_BALL], INITIAL_POS_COL_BALL
 	MOV [POS_ROW_BALL], INITIAL_POS_ROW_BALL
 	MOV [INC_COL_BALL],1
-	MOV[INC_ROW_BALL],-1
+	MOV [INC_ROW_BALL],-1
+	
 	MOV [POS_COL_PJ], INITIAL_POS_COL_PJ
 	MOV [POS_ROW_PJ], INITIAL_POS_ROW_PJ
 	
@@ -392,39 +393,40 @@ DRAW_BLOCKS       ENDP
 ; Moves de cursor to the player Pos and moves it to the next pos
 ; Entry: 
 ; 
-; Returns: DH, DL (row, col) on PJ next pos
+; Returns:
 ;   
 ; Modifies:
 ;   
-; Uses:  
-;	position of pj: POS_ROW_PJ, POS_COL_PJ
+; Uses:  INC_COL_PJ, INC_ROW_PJ
+;	
 ; Calls:
-;   MOVE_CURSOR
+;   MOVE_CURSOR_TO_PJ, MOVE_CURSOR
 ; ****************************************
 PUBLIC MOVE_CURSOR_FOR_PJ
 MOVE_CURSOR_FOR_PJ PROC NEAR
+PUSH DX
 	CALL MOVE_CURSOR_TO_PJ
     ADD DL, [INC_COL_PJ]
     ADD DH, [INC_ROW_PJ]
 	
 	CALL MOVE_CURSOR
+	POP DX
 	RET
 	
 MOVE_CURSOR_FOR_PJ ENDP
 
 ; ****************************************
-; Prints a new tile of the snake, at the current cursos position
+; Moves the cursor to the current position of the pj
 ; Entry: 
 ; 
 ; Returns:
 ;   
 ; Modifies:
 ;   
-; Uses: 
-;   character: ASCII_PJ
-;   attribute: ATTR_PJ
+; Uses: POS_COL_PJ, POS_ROW_PJ
+;
 ; Calls:
-;   PRINT_CHAR_ATTR
+;   MOVE_CURSOR
 ; ****************************************
 PUBLIC MOVE_CURSOR_TO_PJ
 MOVE_CURSOR_TO_PJ PROC NEAR
@@ -436,7 +438,7 @@ MOVE_CURSOR_TO_PJ PROC NEAR
 MOVE_CURSOR_TO_PJ ENDP
 
 ; ****************************************
-; Prints a new tile of the snake, at the current cursos position
+; Prints the pj on the cursor position and deletes the previus position
 ; Entry: 
 ; 
 ; Returns:
@@ -447,7 +449,7 @@ MOVE_CURSOR_TO_PJ ENDP
 ;   character: ASCII_PJ
 ;   attribute: ATTR_PJ
 ; Calls:
-;   PRINT_CHAR_ATTR
+;   PRINT_CHAR_ATTR, MOVE_CURSOR
 ; ****************************************
 PUBLIC PRINT_PJ
 PRINT_PJ PROC NEAR
@@ -506,16 +508,15 @@ END_PRINT_PJ:
 
 PRINT_PJ        ENDP 
 ; ****************************************
-; Does all the player move the cursor, calculate colision with ; walls and prints it
+; 
 ; Entry: 
 ; 
 ; Returns:
 ;   
-; Modifies: POS_COL_PJ, POS_ROW_PJ
+; Modifies: POS_COL_PJ, POS_ROW_PJ, INC_COL_PJ, INC_ROW_PJ
 ;   
 ; Uses: 
-;   character: ASCII_BALL
-;   attribute: ATTR_BALL
+;
 ; Calls:
 ;   MOVE_CURSOR_FOR_PJ, PRINT_PJ
 ; ****************************************
@@ -524,41 +525,41 @@ MOVE_PJ PROC NEAR
 	PUSH AX
 	
 	CALL MOVE_CURSOR_TO_PJ
-	CMP	INC_COL_PJ, 1 ; SI SE MUEVE HACIA LA DERECHA
+	CMP	INC_COL_PJ, 1 ;si se mueve hacia la derecha comprobamos si colisiona por la derecha
 	JZ COLL_RIGHT
-	CMP	INC_COL_PJ, -1 ; SI SE MUEVE HACIA LA DERECHA
+	CMP	INC_COL_PJ, -1 ;si se mueve hacia la izquierda comprobamos si colisiona por la izquierda
 	JZ COLL_LEFT
 	JMP END_PRINT
 
-NO_INC_POS_PJ:
+NO_INC_POS_PJ: ; no se cambia la posicion
 	MOV [INC_COL_PJ], 0
 	MOV [INC_ROW_PJ], 0
 	JMP END_PRINT
 
 COLL_RIGHT:
 	PUSH DX
-	ADD DL, 2
+	ADD DL, 2 ; para comprobar la colision con la de la pala derecha
 	CALL MOVE_CURSOR
 	POP DX
 	CALL READ_SCREEN_CHAR
 	CMP AH, ATTR_FIELD_WALLS
-	JZ NO_INC_POS_PJ
-	JMP END_PRINT
+	JZ NO_INC_POS_PJ ; si colisiona 
+	JMP END_PRINT; si no colisiona
 	
 COLL_LEFT:
 	PUSH DX
-	ADD DL, -2
-	CALL MOVE_CURSOR
+	ADD DL, -2 ; para comprobar la colision con la pala izquierda
+	CALL MOVE_CURSOR 
 	POP DX
 	CALL READ_SCREEN_CHAR
 	CMP AH, ATTR_FIELD_WALLS
-	JZ NO_INC_POS_PJ
-	
+	JZ NO_INC_POS_PJ; si colisiona
+	; sino sigue hasta el final
 END_PRINT:
-	CALL MOVE_CURSOR_FOR_PJ
-	CALL PRINT_PJ
-	
-	MOV [POS_COL_PJ], DL
+	CALL MOVE_CURSOR_FOR_PJ ; usando el incremento de posicion del pj mueve el cursor a su destino
+	CALL PRINT_PJ ; printa al pj 
+	; guarda la posicion del pj
+	MOV [POS_COL_PJ], DL 
 	MOV [POS_ROW_PJ], DH
 	
 	POP AX
@@ -852,43 +853,6 @@ MOVE_CURSOR PROC NEAR
       RET
 
 MOVE_CURSOR       ENDP
-
-; ****************************************
-; Moves cursor one position to the right
-; If the column limit is reached, the cursor does not move
-; Cursor size if kept
-; Entry: 
-;   -
-; Returns:
-;   -
-; Modifies:
-;   -
-; Uses: 
-;   SCREEN_MAX_COLS
-; Calls:
-;   GET_CURSOR_PROP
-;   SET_CURSOR_PROP
-; ****************************************
-PUBLIC  MOVE_CURSOR_RIGHT
-MOVE_CURSOR_RIGHT PROC NEAR
-
-    PUSH CX
-    PUSH DX
-
-    CALL GET_CURSOR_PROP
-    ADD DL, 1
-    CMP DL, SCREEN_MAX_COLS
-    JZ MOVE_CURSOR_RIGHT_END
-    
-    CALL SET_CURSOR_PROP
-
-  MOVE_CURSOR_RIGHT_END:
-    POP DX
-    POP CX
-    RET
-
-MOVE_CURSOR_RIGHT       ENDP
-
 ; ****************************************
 ; Print string to screen
 ; The string end character is '$'
@@ -1007,7 +971,7 @@ PRINT_SCORE PROC NEAR
     PUSH DX
 
     ; 1000'
-    MOV AX, [NUM_BLOCKS]
+    MOV AX, [SCORE_BLOCKS]
     XOR DX, DX
     MOV BX, 1000
     DIV BX            ; DS:AX / BX -> AX: quotient, DX: remainder
@@ -1081,7 +1045,9 @@ MOVE_BALL PROC NEAR
 ;player
 	CALL BALL_PLAYER
 ;Paredes
-	CALL BALL_COLISION	
+	CALL BALL_COLISION
+;volvemos a comprobar la colision con el player, si no se hace no podria colisionar con el pj y despues con la pared o veceversa de ;forma seguida
+	CALL BALL_PLAYER
 ; Añadimos el incremento de posicion
 	ADD DL,[INC_COL_BALL]
 	ADD DH,[INC_ROW_BALL]
@@ -1101,34 +1067,19 @@ MOVE_BALL PROC NEAR
 
 MOVE_BALL       ENDP
 ; ****************************************
-; Check and take action on colision with blocks and field limits.
-; If it's a block, draws a 'space' to destroy it.
+; Comprueba las colisiones de la pelota con el player
+; dependiendo de como y con que pala colisione la balL modifica su incremento.
+; Tambien comprobomaos las colisiones con el suelo.
 ; Entry: 
 ;   -
 ; Returns:
 ;   -
-; Modifies:
-;   INC_COL_BALL
-;	INC_ROW_BALL
-; Uses: 
-;	BALL_TOP
-;	BALL_TOP_X
-;	BALL_TOP_Y
-;	BALL_LADO
-;	BALL_LADO_X
-;	BALL_LADO_Y
-;	BALL_NEXT
-;	BALL_NEXT_X
-;	BALL_NEXT_Y
-;	INC_COL_BALL
-;	INC_ROW_BALL
-;	BALL_COLISION
-;	BALL_COLISION_BLOCK
+; Modifies: INC_COL_BALL, INC_ROW_BALL
+; Uses: POS_COL_PJ, POS_ROW_PJ, 
+;		INC_COL_BALL, INC_ROW_BALL
 ; Calls:
-;   MOVE_CURSOR
-;	CHECK_COLLISION
-;	CHECK_COLLISION_BLOCK
-;	DESTROY_BLOCK
+;		MOVE_CURSOR, 
+;		READ_SCREEN_CHAR,
 ; ****************************************
 PUBLIC BALL_PLAYER
 BALL_PLAYER PROC NEAR
@@ -1137,49 +1088,48 @@ BALL_PLAYER PROC NEAR
 	PUSH CX
 	ADD DL, [INC_COL_BALL]
 	ADD DH, [INC_ROW_BALL]
-	CALL MOVE_CURSOR
+	CALL MOVE_CURSOR ; movemos el cursor a la siguiente posicion de la pelota
 	
 	CALL READ_SCREEN_CHAR
-	CMP AH, ATTR_PJ
+	CMP AH, ATTR_PJ ; si encuentra un attributo de pj
 	JZ CHECK_ASCIIPJ
-	CMP AH, ATTR_FIELD_DOWN
+	CMP AH, ATTR_FIELD_DOWN ; si colisiona con el suelo
 	JZ END_THE_GAME
-	JMP BALL_PJENDP
+	JMP BALL_PJENDP ; sino salta al final y no hace nada
 	
-CHECK_ASCIIPJ:
+CHECK_ASCIIPJ:; chekea si es el ascii del pj
 	CMP AL, ASCII_PJ
-	JZ BALL_COLLPJ
+	JZ BALL_COLLPJ ; si el es el pj
 	JMP BALL_PJENDP
 	
-BALL_COLLPJ:
-
-	CMP DL, [POS_COL_PJ]
+BALL_COLLPJ: ;comprueba cual es la pala que se borrarria si pusiesemos la pelota en esa posicion 
+	CMP DL, [POS_COL_PJ] ; es la del centro?
 	JZ COLL_PJ_CENTER
 	
-	MOV CL, [POS_COL_PJ]
-	INC CL
+	MOV CL, [POS_COL_PJ] 
+	INC CL ; es la de la derecha?
 	CMP DL, CL
 	JZ COLL_PJ_RIGHT
 	
 	MOV CL, [POS_COL_PJ]
-	ADD CL,-1
+	ADD CL,-1 ; es la de la izquierda?
 	CMP DL, CL
 	JZ COLL_PJ_LEFT
 	
-COLL_PJ_CENTER:
+COLL_PJ_CENTER:; saldra hacia arriba
 	MOV [INC_ROW_BALL], -1
 	MOV [INC_COL_BALL], 0
 	JMP BALL_PJENDP
-COLL_PJ_RIGHT:
+COLL_PJ_RIGHT:; hacia la derecha
 	MOV [INC_ROW_BALL], -1
 	MOV [INC_COL_BALL], 1
 	JMP BALL_PJENDP
-COLL_PJ_LEFT:
+COLL_PJ_LEFT: ; saldra hacia la izquierda
 	MOV [INC_ROW_BALL], -1
 	MOV [INC_COL_BALL], -1
 	JMP BALL_PJENDP
 	
-END_THE_GAME:
+END_THE_GAME: ; se acaba el juego y movemos la pelota hacia arriba para no borrar el campo
 	MOV [INC_ROW_BALL], -1
 	MOV [INC_COL_BALL], 0
 	MOV [END_GAME], TRUE
@@ -1433,8 +1383,17 @@ DESTROY_BLOCK PROC NEAR
 	MOV BL, ATTR_FIELD_INSIDE
 	CALL PRINT_CHAR_ATTR
 	INC [NUM_BLOCKS]
-	INC[SCORE_BLOCKS]
-	
+	DEC [NUM_OF_BLOCK]
+	CMP [NUM_OF_BLOCK], 0
+	INC[SCORE_BLOCKS]	
+	JZ YOU_WIN
+	JMP END_DESTRY
+
+YOU_WIN:
+	MOV [END_GAME], TRUE
+	JMP END_DESTRY
+
+END_DESTRY:	
 	POP BX
 	POP DX
 	POP AX
@@ -1572,7 +1531,7 @@ CALCULATE_TOP_LADO ENDP
 ; Game timer interrupt service routine
 ; Called 18.2 times per second by the operating system
 ; Calls previous ISR
-; Manages the movement of the snake: 
+; Manages the movement of the PJ: 
 ;   position, direction, speed, length, display, collisions
 ; Entry: 
 ;   -
@@ -1618,7 +1577,7 @@ NEW_TIMER_INTERRUPT PROC NEAR
 
 	CALL MOVE_BALL
 	
-    ; Check if it is time to increase the speed of the snake
+    ; Check if it is time to increase the speed of the ball
     CMP [DIV_SPEED], 1
     JZ END_ISR
 	MOV AX, [NUM_BLOCKS]
@@ -1628,11 +1587,6 @@ NEW_TIMER_INTERRUPT PROC NEAR
     DEC [DIV_SPEED]
 	
     JMP END_ISR
-      
-END_SNAKES:
-      MOV [END_GAME], TRUE
-      MOV [POS_COL_PJ],INITIAL_POS_COL_PJ
-	  MOV [POS_ROW_PJ],INITIAL_POS_ROW_PJ
 	  
 END_ISR:
       POP AX
@@ -1744,20 +1698,24 @@ DATA_SEG	SEGMENT	PUBLIC
     INC_ROW_BALL DB -1    
     INC_COL_BALL DB -1
 	
-    NUM_BLOCKS DW 1             ;SNAKE LENGTH
-    NUM_BLOCKS_INC_SPEED DB 4   ;THE SPEED IS INCREASED EVERY 'NUM_BLOCKS_INC_SPEED'
-    
+    NUM_BLOCKS DW 0             ;numeros de bloques destruidos antes del incremento de velocidad
+    NUM_BLOCKS_INC_SPEED DB 2   ;THE SPEED IS INCREASED EVERY 'NUM_BLOCKS_INC_SPEED'
+	
+    ; control de juego
     DIV_SPEED DB 10            ; THE SNAKE SPEED IS THE (INTERRUPT FREQUENCY) / DIV_SPEED
     INT_COUNT DB 0              ; 'INT_COUNT' IS INCREASED EVERY INTERRUPT CALL, AND RESET WHEN IT ACHIEVES 'DIV_SPEED'
 
     START_GAME DB 0             ; 'MAIN' sets START_GAME to '1' when a key is pressed
     END_GAME DB 0               ; 'NEW_TIMER_INTERRUPT' sets END_GAME to '1' when a condition to end the game happens
-
+	
+	;String de impresion
     SCORE_STR           DB "Your score is $"
     PLAY_AGAIN_STR      DB ". Do you want to play again? (Y/N)$"
-	
+	CREDITS_STRING		DB "Juego desarrollado por Abraham Armas y Marc Baquès$"
+	CREDITS_STRING_ENTI DB ". ENTI-UB 2017-18."
 	BALL_CHECK_COLISION DB 0			;	Wheter the given position colision or not 	
     BALL_COLISION_BLOCK DB 0	;	Wheter the given position colision is a block or not	
+	; variables de control de la pelota
 	
 	BALL_TOP DB 0				;	Wheter the ball top position colision or not 
 	BALL_TOP_X DB 0				;	Ball top position, coordinate x
@@ -1768,9 +1726,10 @@ DATA_SEG	SEGMENT	PUBLIC
 	BALL_NEXT DB 0				;	Wheter the ball next movement position colision or not 	
 	BALL_NEXT_X DB 0			;	Ball NEXT position, coordinate x
 	BALL_NEXT_Y DB 0			;	Ball NEXT position, coordinate y	
-	
-	SCORE_BLOCKS Dw 0			;	Score of the player
-	
+	; puntuacion
+	SCORE_BLOCKS DW 0			; Score of the player
+	NUM_OF_BLOCK DB 105         ; BLOCKS_ROWS*21 ; sirve para saber cuantos bloques 
+								; hay como maximo esto es hardcoded y no se puede variar
 DATA_SEG	ENDS
 
 		END MAIN
