@@ -167,6 +167,8 @@ END_PROG:
 	CALL PRINT_SCORE_STRING
 	CALL PRINT_SCORE
 	CALL PRINT_PLAY_AGAIN_STRING
+	
+	CALL PRINT_CREDITS
 
 	CALL READ_CHAR
 
@@ -174,7 +176,7 @@ END_PROG:
 	JZ MAIN_GO
 	CMP AL, ASCII_YES_LOWERCASE
 	JZ MAIN_GO
-
+	
 	INT 20h		
 
 MAIN	ENDP	
@@ -404,13 +406,12 @@ DRAW_BLOCKS       ENDP
 ; ****************************************
 PUBLIC MOVE_CURSOR_FOR_PJ
 MOVE_CURSOR_FOR_PJ PROC NEAR
-PUSH DX
+
 	CALL MOVE_CURSOR_TO_PJ
     ADD DL, [INC_COL_PJ]
     ADD DH, [INC_ROW_PJ]
 	
 	CALL MOVE_CURSOR
-	POP DX
 	RET
 	
 MOVE_CURSOR_FOR_PJ ENDP
@@ -946,6 +947,52 @@ PRINT_PLAY_AGAIN_STRING PROC NEAR
     RET
 
 PRINT_PLAY_AGAIN_STRING       ENDP
+; ****************************************
+; Print the score string, starting in the
+; current cursor coordinate
+; Entry: 
+;   -
+; Returns:
+;   -
+; Modifies:
+;   -
+; Uses: 
+;   PLAY_AGAIN_STR
+;   FIELD_C1
+;   FIELD_R2
+; Calls:
+;   PRINT_STRING
+; ****************************************
+PUBLIC PRINT_CREDITS
+PRINT_CREDITS PROC NEAR
+	PUSH DX
+	PUSH CX
+	
+	CALL GET_CURSOR_PROP  ; Get cursor size
+    MOV DH, SCREEN_MAX_ROWS/2
+    MOV DL, SCREEN_MAX_COLS+2
+    CALL SET_CURSOR_PROP
+	
+	LEA DX, CREDITS_STRING
+	CALL PRINT_STRING
+	
+	CALL GET_CURSOR_PROP  ; Get cursor size
+    ADD DH, 1
+	MOV DL, SCREEN_MAX_COLS+2
+    CALL SET_CURSOR_PROP
+	
+	LEA DX, CREDITS_STRING_ENTI
+	CALL PRINT_STRING
+	
+	CALL GET_CURSOR_PROP  ; Get cursor size
+    MOV DH, FIELD_R2+1
+    MOV DL, FIELD_C1
+    CALL SET_CURSOR_PROP
+	
+	POP CX
+	POP DX
+	RET
+PRINT_CREDITS ENDP
 
 ; ****************************************
 ; Prints the score of the player in decimal, on the screen, 
@@ -1711,8 +1758,8 @@ DATA_SEG	SEGMENT	PUBLIC
 	;String de impresion
     SCORE_STR           DB "Your score is $"
     PLAY_AGAIN_STR      DB ". Do you want to play again? (Y/N)$"
-	CREDITS_STRING		DB "Juego desarrollado por Abraham Armas y Marc Baquès$"
-	CREDITS_STRING_ENTI DB ". ENTI-UB 2017-18."
+	CREDITS_STRING		DB "Juego desarrollado por Abraham Armas y Marc Baques. $"
+	CREDITS_STRING_ENTI DB "ENTI-UB 2017-18 dev_tarde_primero.$"
 	BALL_CHECK_COLISION DB 0			;	Wheter the given position colision or not 	
     BALL_COLISION_BLOCK DB 0	;	Wheter the given position colision is a block or not	
 	; variables de control de la pelota
