@@ -65,13 +65,21 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
 	BLOCKS_D2 EQU SCREEN_MAX_COLS-3
 	
 	BLOCKS_ROWS EQU 5
-
 ;	Initial position of bar
 	INITIAL_POS_ROW_PJ EQU SCREEN_MAX_ROWS-4    
     INITIAL_POS_COL_PJ EQU SCREEN_MAX_COLS/2
 	; Initial position ball
 	INITIAL_POS_ROW_BALL EQU SCREEN_MAX_ROWS-5    
 	INITIAL_POS_COL_BALL EQU SCREEN_MAX_COLS/2
+	;Aesthetics of power up
+	ATTR_POWER_UP_INC_VEL EQU 0AFh
+	ATTR_POWER_UP_DEC_VEL EQU 0CFh
+	ASCII_POWER_UP EQU 040h
+	;Limits of the spawn range
+	P_UP_MIN_X EQU 6
+	P_UP_MAX_X EQU 18
+	P_UP_MIN_Y EQU 10
+	P_UP_MAX_Y EQU 14
 ; *************************************************************************
 ; Our executable assembly code starts here in the .code section
 ; *************************************************************************
@@ -161,6 +169,7 @@ END_PROG:
 	
 	MOV [POS_COL_PJ], INITIAL_POS_COL_PJ
 	MOV [POS_ROW_PJ], INITIAL_POS_ROW_PJ
+	MOV[POWER_UP_ON_SCREEN],FALSE
 	
 	CALL RESTORE_TIMER_INTERRUPT
 	CALL SHOW_CURSOR
@@ -1095,6 +1104,8 @@ MOVE_BALL PROC NEAR
 	CALL BALL_COLISION
 ;volvemos a comprobar la colision con el player, si no se hace no podria colisionar con el pj y despues con la pared o veceversa de ;forma seguida
 	CALL BALL_PLAYER
+;Power Ups
+	CALL COLISION_POWER_UP
 ; Añadimos el incremento de posicion
 	ADD DL,[INC_COL_BALL]
 	ADD DH,[INC_ROW_BALL]
@@ -1575,6 +1586,204 @@ FUNCTION_END:
 	
 CALCULATE_TOP_LADO ENDP
 ; ****************************************
+; Generate random number between two numbers
+; Entry:
+;   BL: the range of the random number will be [[MIN_RANDOM], BL)
+;       the maximum value of BL is 0FFh
+;   MIN_RANDOM:  the minim of the random
+; Returns:
+;   AH: random number
+; Modifies:
+;   -
+; Uses: 
+;   -
+; Calls:
+;   int 1ah, service 00
+; ****************************************
+            PUBLIC  RANDOM_NUM
+RANDOM_NUM 	PROC    NEAR
+
+   push bx
+   push cx
+   push dx
+
+   
+   SUB BH,[MIN_RANDOM]
+   
+   mov bh, al   ; backup al
+   mov ah, 00
+   int 1ah      ; CX:DX : timer ticks
+   xor ah, ah 
+   mov al, dl
+   div bl       ; ah: remainder of the division
+   mov al, bh   ; restore al
+   
+   ADD AH,[MIN_RANDOM]
+   
+
+   pop dx
+   pop cx
+   pop bx
+   
+	RET
+
+RANDOM_NUM	ENDP
+; ****************************************
+; Spawns the power up
+; Entry:
+;  -
+; Returns:
+;   -
+; Modifies:
+;   -
+; Uses: 
+;   POWER_UP_TYPE
+;	P_UP_MIN_X
+;	P_UP_MAX_X
+;	P_UP_MIN_Y
+;	P_UP_MAX_Y
+;	ASCII_POWER_UP
+;	ATTR_POWER_UP_DEC_VEL
+;	ATTR_POWER_UP_INC_VEL
+; Calls:
+;   RANDOM_NUM
+;	MOVE_CURSOR
+;	PRINT_CHAR_ATTR
+; ****************************************
+	PUBLIC  GENERATE_POWER_UP
+GENERATE_POWER_UP 	PROC    NEAR
+	
+	PUSH BX
+	PUSH AX
+	PUSH DX
+	
+	CMP [DIV_SPEED],1	; Si la velocidad es maxima spawnearemos de tipo decremento
+	JZ SECOND_TYPE
+	
+	MOV [MIN_RANDOM],0
+	MOV BL,2
+	CALL RANDOM_NUM
+	CMP AH,0
+	JNZ SECOND_TYPE
+FIRST_TYPE:	
+	MOV [POWER_UP_TYPE],AH	;Power up tipo 0
+	JMP POSITIONING
+SECOND_TYPE:
+	MOV [POWER_UP_TYPE],1	;Power up tipo 1
+POSITIONING:
+	MOV DL,[P_UP_MIN_X]
+	MOV [MIN_RANDOM],DL
+	MOV BL,[P_UP_MAX_X]
+	CALL RANDOM_NUM
+	MOV AL,AH 				;POSITION ON X(COL)
+	MOV DL,[P_UP_MIN_Y]
+	MOV [MIN_RANDOM],DL
+	MOV BL,[P_UP_MAX_Y]
+	CALL RANDOM_NUM 		;POSITION ON Y(ROW)
+	;(DH, DL): coordinates -> (row, col)
+	MOV DL, AH
+    MOV DH, AL
+	CALL MOVE_CURSOR
+	
+	CMP [POWER_UP_TYPE],0	;Comprobamos el tipo de power up spawneado
+	JNZ	POWER_UP_TYPE_DEC 	;Si es tipo 1 = decremento de velocidad
+	JMP POWER_UP_TYPE_INC	;Si el tipo 0 = incremento de velocidad
+	
+POWER_UP_TYPE_DEC:
+	MOV AL,ASCII_POWER_UP
+	MOV BL,ATTR_POWER_UP_DEC_VEL
+	CALL PRINT_CHAR_ATTR	;PRINT POWER UP
+	JMP END_GENERATE_POWER_UP
+POWER_UP_TYPE_INC:
+	MOV AL,ASCII_POWER_UP
+	MOV BL,ATTR_POWER_UP_INC_VEL
+	CALL PRINT_CHAR_ATTR	;PRINT POWER UP
+END_GENERATE_POWER_UP:	
+	MOV [POWER_UP_ON_SCREEN],TRUE
+	
+	POP DX
+	POP AX
+	POP BX
+
+	RET
+
+GENERATE_POWER_UP	ENDP
+; ****************************************
+; Check if it's time to spawn a power up
+; Entry:
+;  -
+; Returns:
+;   -
+; Modifies:
+;   -
+; Uses: 
+;   NUM_BLOCKS
+; Calls:
+;   GENERATE_POWER_UP
+; ****************************************
+	PUBLIC  CHECK_TO_SPAWN_POWER_UP
+CHECK_TO_SPAWN_POWER_UP 	PROC    NEAR
+	
+	CMP [NUM_BLOCKS],2
+	JNZ END_CHECK_POWER_UP
+	
+	CMP [POWER_UP_ON_SCREEN],TRUE
+	JZ END_CHECK_POWER_UP
+	
+	CALL GENERATE_POWER_UP
+	
+END_CHECK_POWER_UP:
+	RET
+
+CHECK_TO_SPAWN_POWER_UP	ENDP
+; ****************************************
+; Check if ball collides with a power up and take action
+; Entry:
+;  -
+; Returns:
+;   -
+; Modifies:
+;   DIV_SPEED
+;	POWER_UP_ON_SCREEN
+; Uses: 
+;   INC_ROW_BALL
+;	INC_COL_BALL
+; Calls:
+;   MOVE_CURSOR
+;   READ_SCREEN_CHAR
+; ****************************************
+	PUBLIC  COLISION_POWER_UP
+COLISION_POWER_UP 	PROC    NEAR
+	PUSH DX
+	PUSH AX
+	ADD DL, [INC_COL_BALL]
+	ADD DH, [INC_ROW_BALL]
+	CALL MOVE_CURSOR
+	
+	CALL READ_SCREEN_CHAR
+	CMP AH, ASCII_POWER_UP
+	JNZ END_COLISIONING
+
+	CMP[POWER_UP_TYPE],0
+	JNZ TYPE_DEC_CHECK
+	
+TYPE_INC_CHECK:
+	INC[DIV_SPEED]
+	MOV[POWER_UP_ON_SCREEN],FALSE
+	JMP END_COLISIONING
+	
+TYPE_DEC_CHECK:
+	DEC[DIV_SPEED]
+	MOV[POWER_UP_ON_SCREEN],FALSE
+
+END_COLISIONING:
+	POP AX
+	POP DX
+
+	RET
+
+COLISION_POWER_UP	ENDP
+; ****************************************
 ; Game timer interrupt service routine
 ; Called 18.2 times per second by the operating system
 ; Calls previous ISR
@@ -1621,8 +1830,10 @@ NEW_TIMER_INTERRUPT PROC NEAR
     CMP [DIV_SPEED], AL
     JNZ END_ISR
     MOV [INT_COUNT], 0
-
+	
+	
 	CALL MOVE_BALL
+	CALL CHECK_TO_SPAWN_POWER_UP
 	
     ; Check if it is time to increase the speed of the ball
     CMP [DIV_SPEED], 1
@@ -1777,6 +1988,13 @@ DATA_SEG	SEGMENT	PUBLIC
 	SCORE_BLOCKS DW 0			; Score of the player
 	NUM_OF_BLOCK DB 105         ; BLOCKS_ROWS*21 ; sirve para saber cuantos bloques 
 								; hay como maximo esto es hardcoded y no se puede variar
+	POWER_UP_ON_SCREEN DB 0     ;	Wheter if there is a power up on the screen to avoid spawning more than 1
+	POWER_UP_TYPE DB 0     		;	What type of power up is
+	POWER_UP_INC_VEL DB 0		;	Wheter if is this type of power up
+	POWER_UP_DEC_VEL DB 1		;	Wheter if is this type of power up	
+	
+	MIN_RANDOM DB 0				;	Stores the minimum value of the random
+	
 DATA_SEG	ENDS
 
 		END MAIN
