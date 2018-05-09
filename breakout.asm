@@ -76,10 +76,10 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
 	ATTR_POWER_UP_DEC_VEL EQU 0CFh
 	ASCII_POWER_UP EQU 040h
 	;Limits of the spawn range
-	P_UP_MIN_X EQU 6
+	P_UP_MIN_X EQU 10
 	P_UP_MAX_X EQU 18
-	P_UP_MIN_Y EQU 10
-	P_UP_MAX_Y EQU 14
+	P_UP_MIN_Y EQU 14
+	P_UP_MAX_Y EQU 18
 ; *************************************************************************
 ; Our executable assembly code starts here in the .code section
 ; *************************************************************************
@@ -1110,8 +1110,8 @@ MOVE_BALL PROC NEAR
 	ADD DL,[INC_COL_BALL]
 	ADD DH,[INC_ROW_BALL]
 ;Actualizamos las variables posición a la nueva
-	MOV POS_COL_BALL,DL
-	MOV POS_ROW_BALL,DH
+	MOV [POS_COL_BALL],DL
+	MOV [POS_ROW_BALL],DH
 	
 ; Move BALL on the screen
     CALL MOVE_CURSOR
@@ -1607,8 +1607,8 @@ RANDOM_NUM 	PROC    NEAR
    push cx
    push dx
 
-   
-   SUB BH,[MIN_RANDOM]
+   SUB BL,[MIN_RANDOM]
+   DEC BL
    
    mov bh, al   ; backup al
    mov ah, 00
@@ -1620,7 +1620,6 @@ RANDOM_NUM 	PROC    NEAR
    
    ADD AH,[MIN_RANDOM]
    
-
    pop dx
    pop cx
    pop bx
@@ -1725,7 +1724,7 @@ GENERATE_POWER_UP	ENDP
 CHECK_TO_SPAWN_POWER_UP 	PROC    NEAR
 	
 	CMP [NUM_BLOCKS],2
-	JNZ END_CHECK_POWER_UP
+	JLE END_CHECK_POWER_UP
 	
 	CMP [POWER_UP_ON_SCREEN],TRUE
 	JZ END_CHECK_POWER_UP
@@ -1763,18 +1762,17 @@ COLISION_POWER_UP 	PROC    NEAR
 	CALL READ_SCREEN_CHAR
 	CMP AH, ASCII_POWER_UP
 	JNZ END_COLISIONING
-
+	MOV[POWER_UP_ON_SCREEN],FALSE
+	
 	CMP[POWER_UP_TYPE],0
 	JNZ TYPE_DEC_CHECK
 	
 TYPE_INC_CHECK:
-	INC[DIV_SPEED]
-	MOV[POWER_UP_ON_SCREEN],FALSE
+	DEC[DIV_SPEED]
 	JMP END_COLISIONING
 	
 TYPE_DEC_CHECK:
-	DEC[DIV_SPEED]
-	MOV[POWER_UP_ON_SCREEN],FALSE
+	INC[DIV_SPEED]
 
 END_COLISIONING:
 	POP AX
@@ -1840,7 +1838,7 @@ NEW_TIMER_INTERRUPT PROC NEAR
     JZ END_ISR
 	MOV AX, [NUM_BLOCKS]
 	CMP [NUM_BLOCKS_INC_SPEED],AL
-    JNZ END_ISR
+    JGE END_ISR
 	MOV [NUM_BLOCKS],0
     DEC [DIV_SPEED]
 	
@@ -1957,7 +1955,7 @@ DATA_SEG	SEGMENT	PUBLIC
     INC_COL_BALL DB -1
 	
     NUM_BLOCKS DW 0             ;numeros de bloques destruidos antes del incremento de velocidad
-    NUM_BLOCKS_INC_SPEED DB 2   ;THE SPEED IS INCREASED EVERY 'NUM_BLOCKS_INC_SPEED'
+    NUM_BLOCKS_INC_SPEED DB 4   ;THE SPEED IS INCREASED EVERY 'NUM_BLOCKS_INC_SPEED'
 	
     ; control de juego
     DIV_SPEED DB 10            ; THE SNAKE SPEED IS THE (INTERRUPT FREQUENCY) / DIV_SPEED
