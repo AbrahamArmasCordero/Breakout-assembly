@@ -1608,7 +1608,7 @@ RANDOM_NUM 	PROC    NEAR
    push dx
 
    SUB BL,[MIN_RANDOM]
-   DEC BL
+   INC BL
    
    mov bh, al   ; backup al
    mov ah, 00
@@ -1729,7 +1729,7 @@ GENERATE_POWER_UP	ENDP
 CHECK_TO_SPAWN_POWER_UP 	PROC    NEAR
 	
 	CMP [NUM_BLOCKS], 1 ; esto es 2 en vez de uno 
-	JLE END_CHECK_POWER_UP ; 
+	JL END_CHECK_POWER_UP ; 
 	
 	CMP [POWER_UP_ON_SCREEN],TRUE
 	JZ END_CHECK_POWER_UP
@@ -1767,7 +1767,7 @@ COLISION_POWER_UP 	PROC    NEAR
 	CALL MOVE_CURSOR
 	
 	CALL READ_SCREEN_CHAR
-	CMP AL, ASCII_POWER_UP ; hdp que nos hizo perder un dia
+	CMP AL, ASCII_POWER_UP ;hdp que nos hizo perder un dia
 	JNZ END_COLISIONING
 	
 	MOV [POWER_UP_ON_SCREEN],FALSE
@@ -1975,8 +1975,8 @@ DATA_SEG	SEGMENT	PUBLIC
 	;String de impresion
     SCORE_STR           DB "Your score is $"
     PLAY_AGAIN_STR      DB ". Do you want to play again? (Y/N)$"
-	CREDITS_STRING		DB "Juego desarrollado por Abraham Armas y Marc Baques. $"
-	CREDITS_STRING_ENTI DB "ENTI-UB 2017-18 dev_tarde_primero.$"
+	CREDITS_STRING		DB "Juego desarrollado por Abraham Armas y Marc Baques.$"
+	CREDITS_STRING_ENTI DB "Fonaments de Computadors ENTI-UB 2017-18.$"
 	BALL_CHECK_COLISION DB 0			;	Wheter the given position colision or not 	
     BALL_COLISION_BLOCK DB 0	;	Wheter the given position colision is a block or not	
 	; variables de control de la pelota
