@@ -1,9 +1,0 @@
-
- Start  Stop   Length Name                   Class
- 00000H 00105H 00106H CODE_SEG               
- 00110H 00123H 00014H DATA_SEG               
-
- Origin   Group
- 0000:0   SGROUP
-
-Program entry point at 0000:0100
