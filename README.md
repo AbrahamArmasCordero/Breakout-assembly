@@ -6,7 +6,11 @@ dejamos de prototipar y creamos el archivo breakout.asm.
 apartir de aqui veras como cada uno trabaja en una feature distinta
 y que es lo que hace.
 
-breakout.asm al cuando es creado ya tenia algunas features implementadas como:
-La creacion de los bloques.
-Creacion de la pelota en un lugar fijo.
-Tablero con forma de breakout y no de Snake 
+Para hacer esto ams comodo vete al main de la pestaña code (por defecto ahi) y
+clicka en branches elige la que quieras mirar y despues vete a commits,
+veras claramente quien trabajo en esa branch y que fue lo que hizo.
+
+breakout.asm cuando fue creado ya tenia algunas features implementadas como:
+- La creacion de los bloques.
+- Creacion de la pelota en un lugar fijo.
+- Tablero con forma de breakout y no de Snake
