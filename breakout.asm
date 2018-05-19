@@ -76,10 +76,10 @@ SGROUP 		GROUP 	CODE_SEG, DATA_SEG
 	ATTR_POWER_UP_DEC_VEL EQU 0CFh
 	ASCII_POWER_UP EQU 040h
 	;Limits of the spawn range
-	P_UP_MIN_X EQU 10
-	P_UP_MAX_X EQU 18
-	P_UP_MIN_Y EQU 14
-	P_UP_MAX_Y EQU 18
+	P_UP_MIN_X EQU 2
+	P_UP_MAX_X EQU SCREEN_MAX_COLS-3
+	P_UP_MIN_Y EQU 7
+	P_UP_MAX_Y EQU SCREEN_MAX_ROWS-6
 ; *************************************************************************
 ; Our executable assembly code starts here in the .code section
 ; *************************************************************************
@@ -1673,23 +1673,23 @@ SECOND_TYPE:
 	MOV [POWER_UP_TYPE],1	;Power up tipo 1
 	
 POSITIONING:
-	MOV DL,[P_UP_MIN_X]
 	
-	MOV [MIN_RANDOM],DL
-	MOV BL,[P_UP_MAX_X]
+	MOV [MIN_RANDOM], P_UP_MIN_X
+	MOV BL, P_UP_MAX_X
 	
 	CALL RANDOM_NUM
-	MOV AL,AH 				;POSITION ON X(COL)
-	MOV DL,[P_UP_MIN_Y]
-	MOV [MIN_RANDOM],DL
-	MOV BL,[P_UP_MAX_Y]
+	MOV AL, AH 				;POSITION ON X(COL)
+	
+	MOV [MIN_RANDOM], P_UP_MIN_Y
+	MOV BL, P_UP_MAX_Y
 	CALL RANDOM_NUM 		;POSITION ON Y(ROW)
 	;(DH, DL): coordinates -> (row, col)
-	MOV DL, AH
-    MOV DH, AL
+	MOV DL, AL
+    MOV DH, AH
+	
 	CALL MOVE_CURSOR
 	
-	CMP [POWER_UP_TYPE],0	;Comprobamos el tipo de power up spawneado
+	CMP [POWER_UP_TYPE], 0	;Comprobamos el tipo de power up spawneado
 	JNZ	POWER_UP_TYPE_DEC 	;Si es tipo 1 = decremento de velocidad
 	JMP POWER_UP_TYPE_INC	;Si el tipo 0 = incremento de velocidad
 	
@@ -1728,7 +1728,7 @@ GENERATE_POWER_UP	ENDP
 	PUBLIC  CHECK_TO_SPAWN_POWER_UP
 CHECK_TO_SPAWN_POWER_UP 	PROC    NEAR
 	
-	CMP [NUM_BLOCKS], 1 ; esto es 2 en vez de uno 
+	CMP [NUM_BLOCKS], 4
 	JL END_CHECK_POWER_UP ; 
 	
 	CMP [POWER_UP_ON_SCREEN],TRUE
@@ -1975,8 +1975,8 @@ DATA_SEG	SEGMENT	PUBLIC
 	;String de impresion
     SCORE_STR           DB "Your score is $"
     PLAY_AGAIN_STR      DB ". Do you want to play again? (Y/N)$"
-	CREDITS_STRING		DB "Juego desarrollado por Abraham Armas y Marc Baques.$"
-	CREDITS_STRING_ENTI DB "Fonaments de Computadors ENTI-UB 2017-18.$"
+	CREDITS_STRING		DB "Abraham Armas Cordero y Marc Baques Sabat.$"
+	CREDITS_STRING_ENTI DB "Fonaments de Computadors ENTI-UB 2018.$"
 	BALL_CHECK_COLISION DB 0			;	Wheter the given position colision or not 	
     BALL_COLISION_BLOCK DB 0	;	Wheter the given position colision is a block or not	
 	; variables de control de la pelota
